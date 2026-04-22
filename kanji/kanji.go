@@ -1,14 +1,11 @@
 package kanji
 
 import (
-	"encoding/xml"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 )
 
-const kanjiNodeName = "character"
+const KanjiNodeName = "character"
 
 type Kanji struct {
 	Literal string `xml:"literal"`
@@ -16,6 +13,13 @@ type Kanji struct {
 	JLPT      *int `xml:"misc>jlpt"`
 	Frequency *int `xml:"misc>freq"`
 	Grade     *int `xml:"misc>grade"`
+}
+
+func (k Kanji) IsPopular() bool {
+	if k.JLPT != nil || k.Frequency != nil || k.Grade != nil {
+		return true
+	}
+	return false
 }
 
 func (k Kanji) String() string {
@@ -39,58 +43,4 @@ func (k Kanji) String() string {
 	}
 
 	return k.Literal
-}
-
-type Dictionary struct {
-	Name  xml.Name `xml:"kanjidic2"`
-	Kanji []Kanji  `xml:"character"`
-}
-
-func CreateKanjiChan(fn string, cSize int) <-chan Kanji {
-	kanjiData, err := os.Open(fn)
-	if err != nil {
-		panic(err)
-	}
-	// offset xml file
-
-	fh := xml.NewDecoder(kanjiData)
-	kChan := make(chan Kanji, cSize)
-
-	go func() {
-		defer func() {
-			close(kChan)
-			err := kanjiData.Close()
-			if err != nil {
-				panic(err)
-			}
-		}()
-
-		for {
-			token, err := fh.Token()
-			if err != nil {
-				if err == io.EOF {
-					return
-				}
-				panic(err)
-			}
-
-			if token == nil {
-				continue
-			}
-
-			switch elem := token.(type) {
-			case xml.StartElement:
-				if elem.Name.Local == kanjiNodeName {
-					var kNode Kanji
-					if err := fh.DecodeElement(&kNode, &elem); err != nil {
-						fmt.Println(err)
-					}
-					kChan <- kNode
-				}
-
-			}
-		}
-	}()
-
-	return kChan
 }
