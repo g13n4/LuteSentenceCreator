@@ -5,6 +5,14 @@ import (
 	"strings"
 )
 
+const Null = "NULL"
+
+type MyIntPtr *int
+
+type Stringer interface {
+	String() string
+}
+
 func FormatStringFromArray(title string, list []string) string {
 	var output string
 	if len(list) != 0 {
@@ -12,4 +20,11 @@ func FormatStringFromArray(title string, list []string) string {
 		output = fmt.Sprintf("%s: %s\n", title, output)
 	}
 	return output
+}
+
+func FormatIntNullIfNil(v *int) string {
+	if v == nil {
+		return Null
+	}
+	return fmt.Sprintf("%v", *v)
 }

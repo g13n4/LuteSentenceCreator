@@ -1,17 +1,38 @@
 package main
 
 import (
+	//	"context"
 	"fmt"
+	//	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/g13n4/LuteSentenceCreator/jmdict"
 	"github.com/g13n4/LuteSentenceCreator/kanji"
+	//	"github.com/jackc/pgx/v5"
 
 	"github.com/g13n4/LuteSentenceCreator/parser"
 )
 
 func main() {
+	//Url := fmt.Sprintf(
+	//	"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+	//	os.Getenv("DATABASE_USERNAME"),
+	//	os.Getenv("DATABASE_PASSWORD"),
+	//	os.Getenv("DATABASE_ADDRESS"),
+	//	os.Getenv("DATABASE_PORT"),
+	//	os.Getenv("DATABASE_NAME"),
+	//)
+	//conn, err := pgx.Connect(context.Background(), Url)
+	//defer func() {
+	//	err := conn.Close(context.Background())
+	//	panic(err)
+	//}()
+	//
+	//if err != nil {
+	//	panic(err)
+	//}
+
 	kanjiDictFileName, err := filepath.Abs("./resources/kanjidic2.xml")
 	if err != nil {
 		panic(err)
@@ -21,7 +42,7 @@ func main() {
 		NodeName: kanji.KanjiNodeName,
 	}
 
-	kChan := parser.CreateParsingChan[kanji.Kanji](kanjiDictObj, 10)
+	kChan := parser.CreateParsingChan[*kanji.Kanji](kanjiDictObj, 10)
 
 	time.Sleep(1 * time.Second)
 	var c int = 1
@@ -43,7 +64,7 @@ func main() {
 		NodeName: jmdict.EntryNodeName,
 	}
 
-	eChan := parser.CreateParsingChan[jmdict.Entry](entryDictObj, 10)
+	eChan := parser.CreateParsingChan[*jmdict.Entry](entryDictObj, 10)
 	ec := 1
 
 	for k := range eChan {
