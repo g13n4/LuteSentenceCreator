@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/g13n4/LuteSentenceCreator/utils"
+	"github.com/g13n4/LuteSentencePicker/utils"
 )
 
 const KanjiNodeName = "character"
@@ -53,7 +53,7 @@ func (k *Kanji) String() string {
 	return k.Literal
 }
 
-func (k *Kanji) ToSQL() string {
+func (k *Kanji) ToSaveSQL() string {
 	var info []string
 
 	info = append(info, k.Literal)

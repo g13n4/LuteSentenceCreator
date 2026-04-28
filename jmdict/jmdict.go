@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/g13n4/LuteSentenceCreator/utils"
+	"github.com/g13n4/LuteSentencePicker/utils"
 )
 
 const EntryNodeName = "entry"
@@ -69,7 +69,7 @@ type DictionaryEntry struct {
 	Description string
 }
 
-func (de DictionaryEntry) ToSQL() string {
+func (de DictionaryEntry) ToSaveSQL() string {
 	return fmt.Sprintf("(%s, %s, %s)", de.Name, de.Category, de.Description)
 }
 
@@ -103,8 +103,4 @@ func (e *Entry) IsPopular() bool {
 		return true
 	}
 	return false
-}
-
-func (e *Entry) ToSQL() string {
-	return ""
 }

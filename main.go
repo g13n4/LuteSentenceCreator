@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/g13n4/LuteSentenceCreator/jmdict"
-	"github.com/g13n4/LuteSentenceCreator/kanji"
+	"github.com/g13n4/LuteSentencePicker/jmdict"
+	"github.com/g13n4/LuteSentencePicker/kanji"
 	//	"github.com/jackc/pgx/v5"
 
-	"github.com/g13n4/LuteSentenceCreator/parser"
+	"github.com/g13n4/LuteSentencePicker/parser"
 )
 
 func main() {
@@ -42,7 +42,7 @@ func main() {
 		NodeName: kanji.KanjiNodeName,
 	}
 
-	kChan := parser.CreateParsingChan[*kanji.Kanji](kanjiDictObj, 10)
+	kChan := parser.CreateXMLParsingChan[*kanji.Kanji](kanjiDictObj, 10)
 
 	time.Sleep(1 * time.Second)
 	var c int = 1
@@ -64,7 +64,7 @@ func main() {
 		NodeName: jmdict.EntryNodeName,
 	}
 
-	eChan := parser.CreateParsingChan[*jmdict.Entry](entryDictObj, 10)
+	eChan := parser.CreateXMLParsingChan[*jmdict.Entry](entryDictObj, 10)
 	ec := 1
 
 	for k := range eChan {

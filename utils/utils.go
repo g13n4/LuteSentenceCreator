@@ -8,6 +8,7 @@ import (
 const Null = "NULL"
 
 type MyIntPtr *int
+type PostgresID int
 
 type Stringer interface {
 	String() string
