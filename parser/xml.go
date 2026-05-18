@@ -16,10 +16,7 @@ type XMLDictionary struct {
 }
 
 func CreateXMLParsingChan[T Popular](r io.Reader, nodeName string, cSize int) <-chan T {
-
-	// offset xml file
-
-	fh := xml.NewDecoder(file)
+	fh := xml.NewDecoder(r)
 	fh.Strict = false
 
 	kChan := make(chan T, cSize)
@@ -29,10 +26,6 @@ func CreateXMLParsingChan[T Popular](r io.Reader, nodeName string, cSize int) <-
 
 		defer func() {
 			close(kChan)
-			err := file.Close()
-			if err != nil {
-				panic(err)
-			}
 		}()
 
 		for {
@@ -53,7 +46,7 @@ func CreateXMLParsingChan[T Popular](r io.Reader, nodeName string, cSize int) <-
 
 			switch elem := token.(type) {
 			case xml.StartElement:
-				if elem.Name.Local == xmlData.NodeName {
+				if elem.Name.Local == nodeName {
 					var node T
 					err := fh.DecodeElement(&node, &elem)
 					if err != nil {

@@ -32,9 +32,9 @@ func TestEntryMarshaling(t *testing.T) {
 	expected := Entry{
 		EntryId: 1000220,
 		Readings: []Reading{
-			Reading{Word: "明白", Dictionary: []string{"ichi1", "news1", "nf10"}, IsKanji: true, OrderId: 0},
-			Reading{Word: "めいはく", Dictionary: []string{"ichi1", "news1", "nf10"}, IsKanji: false, OrderId: 0},
-			Reading{Word: "TEST", Dictionary: []string{}, IsKanji: false, OrderId: 0},
+			{Word: "明白", Dictionary: []string{"ichi1", "news1", "nf10"}, IsKanji: true, OrderId: 0},
+			{Word: "めいはく", Dictionary: []string{"ichi1", "news1", "nf10"}, IsKanji: false, OrderId: 0},
+			{Word: "TEST", Dictionary: []string{}, IsKanji: false, OrderId: 0},
 		},
 	}
 	var test Entry
