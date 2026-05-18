@@ -1,0 +1,62 @@
+CREATE TABLE IF NOT EXISTS kanjis
+(
+    id PRIMARY KEY,
+    literal VARCHAR(1),
+    jlpt INTEGER DEFAULT NULL,
+    freq INTEGER DEFAULT NULL,
+    grade INTEGER DEFAULT NULL,
+    stroke_count INTEGER DEFAULT NULL,
+);
+
+CREATE TABLE IF NOT EXISTS dictionaries
+(
+    id          SERIAL PRIMARY KEY,
+    name        TEXT UNIQUE,
+    description TEXT
+);
+
+CREATE TABLE IF NOT EXISTS readings
+(
+    id    INT PRIMARY KEY,
+    entry INT,
+    reading        TEXT,
+    kanji BOOL -- has only hiragana and katakana
+    in_news BOOL
+);
+
+
+CREATE TABLE IF NOT EXISTS sentences
+(
+    id             INT PRIMARY KEY,
+    sentence        TEXT,
+);
+
+CREATE TABLE IF NOT EXISTS dictionaries__mtm__entries
+(
+    entry INT,
+    ed_id INT REFERENCES dictionaries (id),
+    CONSTRAINT dictionaries__mtm__entries_pkey PRIMARY KEY (entry, ed_id)
+    );
+
+
+CREATE TABLE IF NOT EXISTS readings__mtm__kanjis
+(
+    r_id INT REFERENCES readings (id),
+    l_id INT REFERENCES kanjis (id),
+    CONSTRAINT readings__mtm__kanjis_pkey PRIMARY KEY (r_id, l_id)
+);
+
+CREATE TABLE IF NOT EXISTS sentences__mtm__readings
+(
+    r_id INT REFERENCES readings (id),
+    s_id INT REFERENCES sentences (id),
+    CONSTRAINT sentences__mtm__readings_pkey PRIMARY KEY (r_id, s_id)
+);
+
+CREATE TABLE IF NOT EXISTS db_state
+(
+    id INT PRIMARY KEY
+    status INT
+);
+
+INSERT INTO db_state (id, status) VALUES (999, 0);

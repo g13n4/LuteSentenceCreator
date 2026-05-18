@@ -10,27 +10,33 @@ import (
 )
 
 type KanjiRepository interface {
-	Save(ctx context.Context, kanji kanji.Kanji) error
-	BulkSave(ctx context.Context, kanjis []kanji.Kanji) error
+	Save(ctx context.Context, obj *kanji.Kanji) error
+	BulkSave(kanjis []*kanji.Kanji) error
 }
 
 type DictionaryRepository interface {
-	GetIdByName(ctx context.Context, name string) (utils.PostgresID, error)
-	Save(ctx context.Context, obj jmdict.DictionaryEntry) error
+	BulkSave(dictionaries *[]jmdict.Dictionary) error
 }
 
 type EntryRepository interface {
+	ToCache(key string, value utils.PostgresID)
+	FromCache(name string) (utils.PostgresID, bool)
+
 	GetIdByKanjiReading(ctx context.Context, kanjiReading string) (utils.PostgresID, error)
 	GetIdByReading(ctx context.Context, reading string) (utils.PostgresID, error)
-	Save(ctx context.Context, obj jmdict.Entry) error
-	BulkSave(ctx context.Context, objs []jmdict.Entry) error
+	BulkSave(objs []*jmdict.Entry) error
 }
 
 type SentenceRepository interface {
 	Save(ctx context.Context, sentence tatoeba.Sentence) error
-	BulkSave(ctx context.Context, sentences []tatoeba.Sentence) error
+	BulkSave(sentences []*tatoeba.Sentence) error
 }
 
-type ConnectionsRepository interface {
-	SaveDictionaryEntry(ctx context.Context, dictionaryEntry jmdict.DictionaryEntry) error
+type ConnectionsRepository[T any] interface {
+	BulkSave(objs []T) error
+}
+
+type DBStateRepository interface {
+	SetStatus(ctx context.Context, val int) error
+	GetStatus(ctx context.Context) (int, error)
 }

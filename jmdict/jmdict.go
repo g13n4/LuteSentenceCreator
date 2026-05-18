@@ -1,106 +1,160 @@
 package jmdict
 
 import (
+	"encoding/xml"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
-
-	"github.com/g13n4/LuteSentencePicker/utils"
 )
 
 const EntryNodeName = "entry"
 
-func CreateDictionaryEntry(name string) *DictionaryEntry {
-	var category string
-
-	category = "news"
-	if strings.HasPrefix(name, category) {
-		return &DictionaryEntry{
-			Name:        name,
-			Category:    category,
-			Description: "appears in the \"wordfreq\" file compiled by Alexandre Girardi from the Mainichi Shimbun. (See the Monash ftp archive for a copy.) Words in the first 12,000 in that file are marked \"news1\" and words in the second 12,000 are marked \"news2\".",
-		}
-	}
-
-	category = "ichi"
-	if strings.HasPrefix(name, category) {
-		return &DictionaryEntry{
-			Name:        name,
-			Category:    category,
-			Description: "appears in the \"Ichimango goi bunruishuu\", Senmon Kyouiku Publishing, Tokyo, 1998.  (The entries marked \"ichi2\" were demoted from ichi1 because they were observed to have low frequencies in the WWW and newspapers.)",
-		}
-	}
-
-	category = "spec"
-	if strings.HasPrefix(name, category) {
-		return &DictionaryEntry{
-			Name:        name,
-			Category:    category,
-			Description: "a small number of words use this marker when they are detected as being common, but are not included in other lists.",
-		}
-	}
-
-	category = "gai"
-	if strings.HasPrefix(name, category) {
-		return &DictionaryEntry{
-			Name:        name,
-			Category:    category,
-			Description: "common loanwords, based on the wordfreq file.",
-		}
-	}
-
-	category = "nf"
-	if strings.HasPrefix(name, category) {
-		return &DictionaryEntry{
-			Name:        name,
-			Category:    category,
-			Description: "this is an indicator of frequency-of-use ranking in the wordfreq file. \"xx\" is the number of the set of 500 words in which the entry can be found, with \"01\" assigned to the first 500, \"02\" to the second, and so on. (The entries with news1, ichi1, spec1, spec2 and gai1 values are marked with a \"(P)\" in the EDICT and EDICT2 files.)",
-		}
-	}
-
-	return &DictionaryEntry{
-		Name: name,
-	}
-
+type WordEntry interface {
+	IsInDictionary() bool
+	NewsInDictionary() bool
+	String() string
 }
 
-type DictionaryEntry struct {
-	Name        string
-	Category    string
-	Description string
+func NewsInDictionary(dictionaries *[]string) bool {
+	for _, word := range *dictionaries {
+		if strings.Contains(word, DictionaryNews) {
+			return true
+		}
+	}
+	return false
 }
 
-func (de DictionaryEntry) ToSaveSQL() string {
-	return fmt.Sprintf("(%s, %s, %s)", de.Name, de.Category, de.Description)
+type Reading struct {
+	Word       string
+	Dictionary []string
+	IsKanji    bool
+	OrderId    int
+}
+
+func (r *Reading) IsInDictionary() bool {
+	return len(r.Dictionary) == 0
+}
+
+func (r *Reading) NewsInDictionary() bool {
+	return NewsInDictionary(&r.Dictionary)
+}
+
+func (r *Reading) String() string {
+	if len(r.Dictionary) != 0 {
+		return fmt.Sprintf(
+			"%s [%s]",
+			r.Word,
+			strings.Join(r.Dictionary, ", "),
+		)
+	}
+	return r.Word
 }
 
 type Entry struct {
-	EntryId      int      `xml:"ent_seq"`
-	KanjiReading []string `xml:"k_ele>keb"`
-	Reading      []string `xml:"r_ele>reb"`
+	EntryId  int       `xml:"ent_seq"`
+	Readings []Reading `xml:"-"`
+}
 
-	InDictionaryKanji   []string `xml:"k_ele>ke_pri"`
-	InDictionaryReading []string `xml:"r_ele>re_pri"`
+type RElement struct {
+	Reb   string   `xml:"reb"`
+	RePri []string `xml:"re_pri"`
+}
+
+type KElement struct {
+	Keb   string   `xml:"keb"`
+	KePri []string `xml:"ke_pri"`
+}
+
+func (e *Entry) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	type Alias Entry
+	var nodes struct {
+		*Alias
+		KElements []KElement `xml:"k_ele"`
+		RElements []RElement `xml:"r_ele"`
+	}
+
+	nodes.Alias = (*Alias)(e)
+
+	if err := d.DecodeElement(&nodes, &start); err != nil {
+		return err
+	}
+
+	counter := 1
+	for _, node := range nodes.KElements {
+		if node.KePri == nil {
+			node.KePri = make([]string, 0)
+		}
+		e.Readings = append(e.Readings, Reading{
+			Word: node.Keb, Dictionary: node.KePri, IsKanji: true, OrderId: e.EntryId<<2 + counter,
+		})
+		counter++
+	}
+
+	for _, node := range nodes.RElements {
+		if node.RePri == nil {
+			node.RePri = make([]string, 0)
+		}
+		e.Readings = append(e.Readings, Reading{
+			Word: node.Reb, Dictionary: node.RePri, IsKanji: false, OrderId: e.EntryId<<2 + counter,
+		})
+		counter++
+	}
+
+	return nil
 }
 
 func (e *Entry) String() string {
-	krInfo := utils.FormatStringFromArray("Reading [incl. kanji]", e.KanjiReading)
-	rInfo := utils.FormatStringFromArray("Reading [w/o kanji]", e.Reading)
-	dkInfo := utils.FormatStringFromArray("In Dictionary [incl. kanji]", e.InDictionaryKanji)
-	drInfo := utils.FormatStringFromArray("In Dictionary [w/o kanji]", e.InDictionaryReading)
-
-	return fmt.Sprintf(
-		"Entry id: %d\n%s%s%s%s",
-		e.EntryId,
-		krInfo,
-		rInfo,
-		dkInfo,
-		drInfo,
+	var KReadings []string
+	var WOKReadings []string
+	for _, word := range e.Readings {
+		if word.IsKanji {
+			KReadings = append(KReadings, word.String())
+		} else {
+			WOKReadings = append(WOKReadings, word.String())
+		}
+	}
+	wk := fmt.Sprintf(
+		"Reading [incl. kanji]: %s",
+		strings.Join(KReadings, ", "),
 	)
+
+	wok := fmt.Sprintf(
+		"Reading [w/o. kanji]: %s",
+		strings.Join(WOKReadings, ", "),
+	)
+
+	return fmt.Sprintf("%s\n%s", wk, wok)
 }
 
 func (e *Entry) IsPopular() bool {
-	if len(e.InDictionaryKanji) != 0 || len(e.InDictionaryReading) != 0 {
-		return true
+	for _, r := range e.Readings {
+		if r.IsInDictionary() {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (e *Entry) IsInNews() bool {
+	for _, word := range e.Readings {
+		if word.NewsInDictionary() {
+			return true
+		}
 	}
 	return false
+}
+
+func (e *Entry) GetAllDictionaries() *[]string {
+	dictMap := make(map[string]struct{})
+	for _, word := range e.Readings {
+		for _, dName := range word.Dictionary {
+			dictMap[dName] = struct{}{}
+		}
+	}
+
+	dictionaries := slices.Collect(maps.Keys(dictMap))
+
+	return &dictionaries
 }

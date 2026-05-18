@@ -1,77 +1,151 @@
 package main
 
 import (
-	//	"context"
+	"context"
 	"fmt"
-	//	"os"
-	"path/filepath"
-	"time"
+	"log"
+	"os"
 
-	"github.com/g13n4/LuteSentencePicker/jmdict"
-	"github.com/g13n4/LuteSentencePicker/kanji"
-	//	"github.com/jackc/pgx/v5"
-
-	"github.com/g13n4/LuteSentencePicker/parser"
+	"github.com/g13n4/LuteSentencePicker/db"
+	"github.com/g13n4/LuteSentencePicker/repository"
+	"github.com/g13n4/LuteSentencePicker/state"
+	"github.com/g13n4/LuteSentencePicker/utils"
+	"github.com/joho/godotenv"
 )
 
+const DictionaryErrorMessage = "Value for %s is not set! You should provide a path to kanjidic, jmdict2 and japanese sentences"
+
 func main() {
-	//Url := fmt.Sprintf(
-	//	"postgres://%s:%s@%s:%s/%s?sslmode=disable",
-	//	os.Getenv("DATABASE_USERNAME"),
-	//	os.Getenv("DATABASE_PASSWORD"),
-	//	os.Getenv("DATABASE_ADDRESS"),
-	//	os.Getenv("DATABASE_PORT"),
-	//	os.Getenv("DATABASE_NAME"),
-	//)
-	//conn, err := pgx.Connect(context.Background(), Url)
-	//defer func() {
-	//	err := conn.Close(context.Background())
-	//	panic(err)
-	//}()
-	//
-	//if err != nil {
-	//	panic(err)
-	//}
+	err := godotenv.Load()
 
-	kanjiDictFileName, err := filepath.Abs("./resources/kanjidic2.xml")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	stateSingleton := state.GetStateSingleton()
+
+	dbStateRepo := repository.NewDBStateRepository(stateSingleton.Pool)
+	currentDBStatus, err := dbStateRepo.GetStatus(context.Background())
+
 	if err != nil {
 		panic(err)
 	}
-	kanjiDictObj := parser.XMLDictionary{
-		Filepath: kanjiDictFileName,
-		NodeName: kanji.KanjiNodeName,
-	}
 
-	kChan := parser.CreateXMLParsingChan[*kanji.Kanji](kanjiDictObj, 10)
+	if currentDBStatus < 1 {
+		sqlFile, err := os.ReadFile("init.sql")
 
-	time.Sleep(1 * time.Second)
-	var c int = 1
+		if err != nil {
+			panic(err)
+		}
+		_, err = stateSingleton.Pool.Exec(context.Background(), string(sqlFile))
 
-	for k := range kChan {
-		fmt.Println(c, k)
-		c += 1
-		if c == 10 {
-			break
+		if err != nil {
+			panic(err)
+		}
+
+		err = dbStateRepo.SetStatus(context.Background(), 1)
+
+		if err != nil {
+			panic(err)
 		}
 	}
 
-	entryDictFileName, err := filepath.Abs("./resources/JMDict.xml")
-	if err != nil {
-		panic(err)
-	}
-	entryDictObj := parser.XMLDictionary{
-		Filepath: entryDictFileName,
-		NodeName: jmdict.EntryNodeName,
-	}
+	if currentDBStatus < 2 {
+		kanjiPath := os.Getenv("PATH_KANJIDIC")
+		if kanjiPath != "" {
+			panic(fmt.Sprintf(DictionaryErrorMessage, "PATH_KANJIDIC"))
+		}
+		file, closer, err := utils.OpenFile(kanjiPath)
+		defer func() {
+			err := closer()
+			if err != nil {
+				panic(err)
+			}
+		}()
+		if err != nil {
+			panic(err)
+		}
 
-	eChan := parser.CreateXMLParsingChan[*jmdict.Entry](entryDictObj, 10)
-	ec := 1
+		err = db.FillKanji(stateSingleton, file)
+		if err != nil {
+			panic(err)
+		}
+		err = dbStateRepo.SetStatus(context.Background(), 2)
 
-	for k := range eChan {
-		fmt.Println(ec, k)
-		ec += 1
-		if ec == 10 {
-			break
+		if err != nil {
+			panic(err)
 		}
 	}
+
+	if currentDBStatus < 3 {
+		jmdictPath := os.Getenv("PATH_JMDICT")
+		if jmdictPath != "" {
+			panic(fmt.Sprintf(DictionaryErrorMessage, "PATH_JMDICT"))
+		}
+
+		file, closer, err := utils.OpenFile(jmdictPath)
+		defer func() {
+			err := closer()
+			if err != nil {
+				panic(err)
+			}
+		}()
+		if err != nil {
+			panic(err)
+		}
+
+		err = db.FillEntry(stateSingleton, file)
+		if err != nil {
+			panic(err)
+		}
+		err = dbStateRepo.SetStatus(context.Background(), 3)
+
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if currentDBStatus < 4 {
+		sentencePath := os.Getenv("PATH_SENTENCES")
+		if sentencePath != "" {
+			panic(fmt.Sprintf(DictionaryErrorMessage, "PATH_SENTENCES"))
+		}
+
+		senFile, closer, err := utils.OpenFile(sentencePath)
+		defer func() {
+			err := closer()
+			if err != nil {
+				panic(err)
+			}
+		}()
+		if err != nil {
+			panic(err)
+		}
+
+		sentenceSudachiPath := os.Getenv("PATH_SENTENCES_SUDACHI")
+		if sentenceSudachiPath != "" {
+			panic(fmt.Sprintf(DictionaryErrorMessage, "PATH_SENTENCES_SUDACHI"))
+		}
+
+		sudFile, closer, err := utils.OpenFile(sentenceSudachiPath)
+		defer func() {
+			err := closer()
+			if err != nil {
+				panic(err)
+			}
+		}()
+		if err != nil {
+			panic(err)
+		}
+
+		err = db.FillSentence(stateSingleton, senFile, sudFile)
+		if err != nil {
+			panic(err)
+		}
+		err = dbStateRepo.SetStatus(context.Background(), 4)
+
+		if err != nil {
+			panic(err)
+		}
+	}
+
 }
