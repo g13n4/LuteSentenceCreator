@@ -44,6 +44,10 @@ func FillEntry(ss *state.Singleton, entryData io.Reader) error {
 	deSaver := utils.NewBulkSaveHelper[*conns.DictionaryEntry](deRepo, ss.BatchSize)
 
 	for e := range eChan {
+		if !e.IsPopular() {
+			continue
+		}
+
 		for _, r := range e.Readings {
 			_, ok := ss.EntryPool[r.Word]
 			if !ok {

@@ -29,6 +29,10 @@ func CreateTSVParsingChan(tsvR io.Reader, cSize int) <-chan *tatoeba.Sentence {
 				}
 				panic(err)
 			}
+
+			if line == "" || line == "\n" {
+				continue
+			}
 			line = strings.TrimSpace(line)
 			split := strings.Split(line, "\t")
 			sentenceId, err := strconv.Atoi(split[0])

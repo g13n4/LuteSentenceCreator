@@ -55,9 +55,7 @@ func CreateXMLParsingChan[T Popular](r io.Reader, nodeName string, cSize int) <-
 							// like &unc
 						}
 					}
-					if node.IsPopular() {
-						kChan <- node
-					}
+					kChan <- node
 				}
 			}
 		}

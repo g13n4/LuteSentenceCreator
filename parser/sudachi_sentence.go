@@ -30,15 +30,19 @@ func CreateSudachiTSVParsingChan(tsvFileR io.Reader, cSize int) <-chan *tatoeba.
 				}
 				panic(err)
 			}
+			if line == "" || line == "\n" {
+				continue
+			}
 			line = strings.TrimSpace(line)
 			for k, v := range re.FindStringSubmatch(line) {
-				if k == 0 {
+				if k == 1 {
 					sentence.Id, err = strconv.Atoi(v)
 					if err != nil {
 						panic(err)
 					}
-				} else {
-					split := strings.Split(line, "\t")
+				}
+				if k == 2 {
+					split := strings.Split(v, " ")
 					sentence.Tokens = &split
 				}
 			}
