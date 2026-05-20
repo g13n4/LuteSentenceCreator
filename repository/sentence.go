@@ -19,7 +19,7 @@ func (k *sentenceRepository) Save(ctx context.Context, sentence tatoeba.Sentence
 }
 
 func (k *sentenceRepository) BulkSave(sentences []*tatoeba.Sentence) error {
-	bulkSentences := make([][]any, len(sentences))
+	bulkSentences := make([][]any, 0)
 	for _, sentence := range sentences {
 		if sentence == nil {
 			continue

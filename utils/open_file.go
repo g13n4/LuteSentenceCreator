@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func OpenFile(fileName string) (*os.File, func() error, error) {
@@ -14,6 +15,9 @@ func OpenFile(fileName string) (*os.File, func() error, error) {
 
 	closer := func() error {
 		err := file.Close()
+		if strings.Contains(err.Error(), "file already closed") {
+			return nil
+		}
 		return err
 	}
 

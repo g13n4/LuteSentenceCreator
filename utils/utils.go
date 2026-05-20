@@ -29,3 +29,8 @@ func FormatIntNullIfNil(v *int) string {
 	}
 	return fmt.Sprintf("%v", *v)
 }
+
+func GetUTFValue(v string) int {
+	val := []rune(v)
+	return int(val[0])
+}

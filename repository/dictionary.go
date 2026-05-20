@@ -51,7 +51,7 @@ func (dr *dictionaryRepository) BulkSave(dictionaries *[]jmdict.Dictionary) erro
 
 	_, err := dr.db.CopyFrom(
 		context.Background(),
-		pgx.Identifier{"sentences__mtm__readings"},
+		pgx.Identifier{"dictionaries"},
 		[]string{"id", "name", "description"},
 		pgx.CopyFromRows(connections),
 	)

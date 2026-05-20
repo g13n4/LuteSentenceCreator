@@ -15,7 +15,6 @@ type dictionaryEntryConnectionsRepository struct {
 func (dec *dictionaryEntryConnectionsRepository) BulkSave(objs []*conns.DictionaryEntry) error {
 	connections := make([][]any, len(objs))
 	for i, o := range objs {
-
 		connections[i] = []any{o.Entry, o.DictionaryId}
 	}
 

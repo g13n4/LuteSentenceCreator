@@ -13,7 +13,7 @@ type readingKanjiConnectionsRepository struct {
 }
 
 func (rkc *readingKanjiConnectionsRepository) BulkSave(objs []*conns.ReadingKanji) error {
-	connections := make([][]any, len(objs))
+	connections := make([][]any, 0)
 	for i, o := range objs {
 		connections[i] = []any{o.ReadingId, o.KanjiId}
 	}

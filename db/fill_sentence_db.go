@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	conns "github.com/g13n4/LuteSentencePicker/connections"
@@ -10,6 +11,7 @@ import (
 	"github.com/g13n4/LuteSentencePicker/state"
 	"github.com/g13n4/LuteSentencePicker/tatoeba"
 	"github.com/g13n4/LuteSentencePicker/utils"
+	"github.com/jackc/pgx/v5"
 )
 
 func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) error {
@@ -17,7 +19,9 @@ func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) e
 	tx, err := ss.Pool.Begin(ctx)
 	defer func() {
 		err := tx.Rollback(ctx)
-		panic(err)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			panic(err)
+		}
 	}()
 
 	if err != nil {
@@ -46,20 +50,27 @@ func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) e
 	tsChan := parser.CreateSudachiTSVParsingChan(parsedSentencedR, ss.BatchSize)
 	srSaver := utils.NewBulkSaveHelper[*conns.SentenceReading](sentenceReadingRepo, ss.BatchSize)
 
+	uniqueReadings := make(map[int]struct{})
 	for s := range tsChan {
 		for _, t := range *s.Tokens {
 			readingIds, ok := ss.EntryPool[t]
 			if ok {
 				for _, rId := range readingIds {
-					srSaver.Add(
-						&conns.SentenceReading{
-							SentenceId: s.Id,
-							ReadingId:  rId,
-						},
-					)
+					uniqueReadings[rId] = struct{}{}
 				}
 			}
+
 		}
+
+		for k, _ := range uniqueReadings {
+			srSaver.Add(
+				&conns.SentenceReading{
+					SentenceId: s.Id,
+					ReadingId:  k,
+				},
+			)
+		}
+		clear(uniqueReadings)
 	}
 
 	err = srSaver.SaveInBatches()

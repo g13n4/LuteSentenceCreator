@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	"github.com/g13n4/LuteSentencePicker/kanji"
@@ -9,6 +10,7 @@ import (
 	"github.com/g13n4/LuteSentencePicker/repository"
 	"github.com/g13n4/LuteSentencePicker/state"
 	"github.com/g13n4/LuteSentencePicker/utils"
+	"github.com/jackc/pgx/v5"
 )
 
 func FillKanji(ss *state.Singleton, r io.Reader) error {
@@ -16,7 +18,9 @@ func FillKanji(ss *state.Singleton, r io.Reader) error {
 	tx, err := ss.Pool.Begin(ctx)
 	defer func() {
 		err := tx.Rollback(ctx)
-		panic(err)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			panic(err)
+		}
 	}()
 
 	if err != nil {

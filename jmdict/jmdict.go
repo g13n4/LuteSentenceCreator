@@ -29,7 +29,7 @@ type Reading struct {
 	Word       string
 	Dictionary []string
 	IsKanji    bool
-	OrderId    int
+	CombinedId int
 }
 
 func (r *Reading) IsInDictionary() bool {
@@ -86,7 +86,7 @@ func (e *Entry) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 			node.KePri = make([]string, 0)
 		}
 		e.Readings = append(e.Readings, Reading{
-			Word: node.Keb, Dictionary: node.KePri, IsKanji: true, OrderId: e.EntryId<<2 + counter,
+			Word: node.Keb, Dictionary: node.KePri, IsKanji: true, CombinedId: e.EntryId*100 + counter,
 		})
 		counter++
 	}
@@ -96,7 +96,7 @@ func (e *Entry) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 			node.RePri = make([]string, 0)
 		}
 		e.Readings = append(e.Readings, Reading{
-			Word: node.Reb, Dictionary: node.RePri, IsKanji: false, OrderId: e.EntryId<<2 + counter,
+			Word: node.Reb, Dictionary: node.RePri, IsKanji: false, CombinedId: e.EntryId*100 + counter,
 		})
 		counter++
 	}

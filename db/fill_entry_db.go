@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"io"
 
 	conns "github.com/g13n4/LuteSentencePicker/connections"
@@ -10,6 +11,7 @@ import (
 	"github.com/g13n4/LuteSentencePicker/repository"
 	"github.com/g13n4/LuteSentencePicker/state"
 	"github.com/g13n4/LuteSentencePicker/utils"
+	"github.com/jackc/pgx/v5"
 )
 
 func FillEntry(ss *state.Singleton, entryData io.Reader) error {
@@ -19,7 +21,9 @@ func FillEntry(ss *state.Singleton, entryData io.Reader) error {
 	tx, err := ss.Pool.Begin(ctx)
 	defer func() {
 		err := tx.Rollback(ctx)
-		panic(err)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			panic(err)
+		}
 	}()
 
 	if err != nil {
@@ -43,6 +47,8 @@ func FillEntry(ss *state.Singleton, entryData io.Reader) error {
 	rkSaver := utils.NewBulkSaveHelper[*conns.ReadingKanji](rkRepo, ss.BatchSize)
 	deSaver := utils.NewBulkSaveHelper[*conns.DictionaryEntry](deRepo, ss.BatchSize)
 
+	uniqueKanjiTOReadingConnection := make(map[int]struct{})
+	uniqueReadingDictionary := make(map[int]struct{})
 	for e := range eChan {
 		if !e.IsPopular() {
 			continue
@@ -51,26 +57,42 @@ func FillEntry(ss *state.Singleton, entryData io.Reader) error {
 		for _, r := range e.Readings {
 			_, ok := ss.EntryPool[r.Word]
 			if !ok {
-				ss.EntryPool[r.Word] = make([]int, 1)
+				ss.EntryPool[r.Word] = make([]int, 0)
 			}
-			ss.EntryPool[r.Word] = append(ss.EntryPool[r.Word], r.OrderId)
+			ss.EntryPool[r.Word] = append(ss.EntryPool[r.Word], r.CombinedId)
 
 			if r.IsKanji {
 				for _, k := range r.Word {
 					kInt := int(k)
-					_, ok := ss.KanjiPool[kInt]
+					_, ok := uniqueKanjiTOReadingConnection[kInt]
 					if ok {
-						rk := conns.ReadingKanji{ReadingId: r.OrderId, KanjiId: kInt}
+						continue
+					}
+
+					_, ok = ss.KanjiPool[kInt]
+					if ok {
+						rk := conns.ReadingKanji{ReadingId: r.CombinedId, KanjiId: kInt}
 						rkSaver.Add(&rk)
+
+						uniqueKanjiTOReadingConnection[kInt] = struct{}{}
 					}
 				}
+				clear(uniqueKanjiTOReadingConnection)
 
 			}
 		}
 		for _, dName := range *e.GetAllDictionaries() {
 			dObj := dictPool.GetDictionary(dName)
+
+			_, ok := uniqueReadingDictionary[dObj.Id]
+			if ok {
+				continue
+			}
+
 			deObj := conns.DictionaryEntry{Entry: e.EntryId, DictionaryId: dObj.Id}
 			deSaver.Add(&deObj)
+
+			uniqueReadingDictionary[dObj.Id] = struct{}{}
 		}
 
 		err = eSaver.Add(e)

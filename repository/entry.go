@@ -29,14 +29,14 @@ func (e *entryRepository) GetIdByKanjiReading(ctx context.Context, kanjiReading 
 func (e *entryRepository) getReadings(obj *jmdict.Entry) *[][]any {
 	readings := make([][]any, len(obj.Readings))
 	for i, reading := range obj.Readings {
-		readings[i] = []any{reading.OrderId, obj.EntryId, reading.Word, reading.IsKanji, obj.IsInNews()}
+		readings[i] = []any{reading.CombinedId, obj.EntryId, reading.Word, reading.IsKanji, obj.IsInNews()}
 	}
 
 	return &readings
 }
 
 func (e *entryRepository) BulkSave(objs []*jmdict.Entry) error {
-	allReadings := make([][]any, len(objs))
+	allReadings := make([][]any, 0)
 	for _, obj := range objs {
 		if obj == nil {
 			continue
@@ -49,7 +49,7 @@ func (e *entryRepository) BulkSave(objs []*jmdict.Entry) error {
 	_, err := e.db.CopyFrom(
 		context.Background(),
 		pgx.Identifier{"readings"},
-		[]string{"entry_id", "reading", "kanji", "in_news"},
+		[]string{"id", "entry", "reading", "kanji", "in_news"},
 		pgx.CopyFromRows(allReadings),
 	)
 	return err

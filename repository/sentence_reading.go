@@ -13,9 +13,13 @@ type sentenceReadingConnectionsRepository struct {
 }
 
 func (src *sentenceReadingConnectionsRepository) BulkSave(objs []*conns.SentenceReading) error {
-	connections := make([][]any, len(objs))
-	for i, o := range objs {
-		connections[i] = []any{o.ReadingId, o.SentenceId}
+	connections := make([][]any, 0)
+	for _, o := range objs {
+		if o == nil {
+			continue
+		}
+
+		connections = append(connections, []any{o.ReadingId, o.SentenceId})
 	}
 
 	_, err := src.db.CopyFrom(

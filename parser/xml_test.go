@@ -54,13 +54,13 @@ func TestCreateXMLParsingChanEntry(t *testing.T) {
 `)
 	expected := []*jmdict.Entry{
 		&jmdict.Entry{EntryId: 1244840, Readings: []jmdict.Reading{
-			jmdict.Reading{Word: "駆る", Dictionary: []string{"news2", "nf29", "spec2"}, IsKanji: true, OrderId: 1244840<<2 + 1},
-			jmdict.Reading{Word: "駈る", Dictionary: []string{}, IsKanji: true, OrderId: 1244840<<2 + 2},
-			jmdict.Reading{Word: "かる", Dictionary: []string{"news2", "nf29", "spec2"}, IsKanji: false, OrderId: 1244840<<2 + 3},
+			jmdict.Reading{Word: "駆る", Dictionary: []string{"news2", "nf29", "spec2"}, IsKanji: true, CombinedId: 1244840*100 + 1},
+			jmdict.Reading{Word: "駈る", Dictionary: []string{}, IsKanji: true, CombinedId: 1244840*100 + 2},
+			jmdict.Reading{Word: "かる", Dictionary: []string{"news2", "nf29", "spec2"}, IsKanji: false, CombinedId: 1244840*100 + 3},
 		}},
 		&jmdict.Entry{EntryId: 1552120, Readings: []jmdict.Reading{
-			jmdict.Reading{Word: "流す", Dictionary: []string{"ichi1", "news1", "nf08"}, IsKanji: true, OrderId: 1552120<<2 + 1},
-			jmdict.Reading{Word: "ながす", Dictionary: []string{"ichi1", "news1", "nf08"}, IsKanji: false, OrderId: 1552120<<2 + 2},
+			jmdict.Reading{Word: "流す", Dictionary: []string{"ichi1", "news1", "nf08"}, IsKanji: true, CombinedId: 1552120*100 + 1},
+			jmdict.Reading{Word: "ながす", Dictionary: []string{"ichi1", "news1", "nf08"}, IsKanji: false, CombinedId: 1552120*100 + 2},
 		}},
 	}
 

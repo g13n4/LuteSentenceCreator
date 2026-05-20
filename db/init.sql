@@ -1,11 +1,11 @@
 CREATE TABLE IF NOT EXISTS kanjis
 (
-    id PRIMARY KEY,
+    id INT PRIMARY KEY,
     literal VARCHAR(1),
     jlpt INTEGER DEFAULT NULL,
     freq INTEGER DEFAULT NULL,
     grade INTEGER DEFAULT NULL,
-    stroke_count INTEGER DEFAULT NULL,
+    stroke_count INTEGER DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS dictionaries
@@ -20,15 +20,15 @@ CREATE TABLE IF NOT EXISTS readings
     id    INT PRIMARY KEY,
     entry INT,
     reading        TEXT,
-    kanji BOOL -- has only hiragana and katakana
-    in_news BOOL
+    kanji BOOLEAN, -- has only hiragana and katakana
+    in_news BOOLEAN
 );
 
 
 CREATE TABLE IF NOT EXISTS sentences
 (
     id             INT PRIMARY KEY,
-    sentence        TEXT,
+    sentence        TEXT
 );
 
 CREATE TABLE IF NOT EXISTS dictionaries__mtm__entries
@@ -55,8 +55,7 @@ CREATE TABLE IF NOT EXISTS sentences__mtm__readings
 
 CREATE TABLE IF NOT EXISTS db_state
 (
-    id INT PRIMARY KEY
+    id INT,
     status INT
 );
 
-INSERT INTO db_state (id, status) VALUES (999, 0);

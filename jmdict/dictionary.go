@@ -28,7 +28,10 @@ type DictionaryPool struct {
 }
 
 func NewDictionaryPool() *DictionaryPool {
-	dp := DictionaryPool{}
+	dp := DictionaryPool{
+		dictionaries: make(map[string]*Dictionary),
+		categories:   make([]string, 0),
+	}
 	dp.FillPool()
 	return &dp
 }
