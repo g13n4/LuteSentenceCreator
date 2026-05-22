@@ -15,7 +15,11 @@ type KanjiRepository interface {
 }
 
 type DictionaryRepository interface {
-	BulkSave(dictionaries *[]jmdict.Dictionary) error
+	BulkSave(dictionaries *[]*jmdict.Dictionary) error
+}
+
+type DictionaryCategoryRepository interface {
+	BulkSave(dictionaries *[]*jmdict.DictionaryCategory) error
 }
 
 type EntryRepository interface {

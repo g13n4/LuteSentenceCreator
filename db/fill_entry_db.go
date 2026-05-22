@@ -31,11 +31,12 @@ func FillEntry(ss *state.Singleton, entryData io.Reader) error {
 	}
 
 	entryRepo := repository.NewEntryRepository(tx)
+	dictCatRepo := repository.NewDictionaryCategoryRepository(tx)
 	dictRepo := repository.NewDictionaryRepository(tx)
 	rkRepo := repository.NewReadingKanjiConnectionsRepository(tx)
 	deRepo := repository.NewDictionaryEntryConnectionsRepository(tx)
 
-	err = dictRepo.BulkSave(dictPool.GetAllDictionaries())
+	err = dictCatRepo.BulkSave(dictPool.GetAllCategories())
 	if err != nil {
 		return err
 	}
@@ -82,23 +83,28 @@ func FillEntry(ss *state.Singleton, entryData io.Reader) error {
 			}
 		}
 		for _, dName := range *e.GetAllDictionaries() {
-			dObj := dictPool.GetDictionary(dName)
+			dictObj, dictCatObj := dictPool.GetDictionaryData(dName)
 
-			_, ok := uniqueReadingDictionary[dObj.Id]
+			_, ok := uniqueReadingDictionary[dictObj.Id]
 			if ok {
 				continue
 			}
 
-			deObj := conns.DictionaryEntry{Entry: e.EntryId, DictionaryId: dObj.Id}
+			deObj := conns.DictionaryEntry{Entry: e.EntryId, DictionaryId: dictObj.Id, DictionaryCategoryId: dictCatObj.Id}
 			deSaver.Add(&deObj)
 
-			uniqueReadingDictionary[dObj.Id] = struct{}{}
+			uniqueReadingDictionary[dictObj.Id] = struct{}{}
 		}
 
 		err = eSaver.Add(e)
 		if err != nil {
 			return err
 		}
+	}
+
+	err = dictRepo.BulkSave(dictPool.GetAllDictionaries())
+	if err != nil {
+		return err
 	}
 
 	err = eSaver.BulkSave(true)

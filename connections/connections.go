@@ -1,8 +1,9 @@
 package connections
 
 type DictionaryEntry struct {
-	Entry        int
-	DictionaryId int
+	Entry                int
+	DictionaryCategoryId int
+	DictionaryId         int
 }
 
 type ReadingKanji struct {

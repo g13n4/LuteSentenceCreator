@@ -34,3 +34,17 @@ func GetUTFValue(v string) int {
 	val := []rune(v)
 	return int(val[0])
 }
+
+func ToSafeString(v *string) string {
+	if v == nil {
+		return "-"
+	}
+	return *v
+}
+
+func ToSafeInteger(v *int) string {
+	if v == nil {
+		return "-"
+	}
+	return fmt.Sprintf("%v", *v)
+}

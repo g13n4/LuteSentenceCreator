@@ -8,11 +8,17 @@ CREATE TABLE IF NOT EXISTS kanjis
     stroke_count INTEGER DEFAULT NULL
 );
 
-CREATE TABLE IF NOT EXISTS dictionaries
+CREATE TABLE IF NOT EXISTS dictionary_categories
 (
     id          SERIAL PRIMARY KEY,
     name        TEXT UNIQUE,
     description TEXT
+);
+
+CREATE TABLE IF NOT EXISTS dictionaries
+(
+    id          SERIAL PRIMARY KEY,
+    name        TEXT UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS readings
@@ -34,8 +40,9 @@ CREATE TABLE IF NOT EXISTS sentences
 CREATE TABLE IF NOT EXISTS dictionaries__mtm__entries
 (
     entry INT,
-    ed_id INT REFERENCES dictionaries (id),
-    CONSTRAINT dictionaries__mtm__entries_pkey PRIMARY KEY (entry, ed_id)
+    dc_id INT REFERENCES dictionary_categories (id),
+    d_id INT REFERENCES dictionaries (id),
+    CONSTRAINT dictionaries__mtm__entries_pkey PRIMARY KEY (d_id, entry, dc_id)
     );
 
 
