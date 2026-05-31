@@ -5,6 +5,7 @@ import (
 
 	"github.com/g13n4/LuteSentencePicker/jmdict"
 	"github.com/g13n4/LuteSentencePicker/kanji"
+	"github.com/g13n4/LuteSentencePicker/mhs"
 	"github.com/g13n4/LuteSentencePicker/tatoeba"
 	"github.com/g13n4/LuteSentencePicker/utils"
 )
@@ -12,10 +13,12 @@ import (
 type KanjiRepository interface {
 	Save(ctx context.Context, obj *kanji.Kanji) error
 	BulkSave(kanjis []*kanji.Kanji) error
+	GetUniqueFields(ctx context.Context, field string) ([]int, error)
 }
 
 type DictionaryRepository interface {
 	BulkSave(dictionaries *[]*jmdict.Dictionary) error
+	GetDictionaries(ctx context.Context) ([]*jmdict.Dictionary, error)
 }
 
 type DictionaryCategoryRepository interface {
@@ -43,4 +46,8 @@ type ConnectionsRepository[T any] interface {
 type DBStateRepository interface {
 	SetStatus(ctx context.Context, val int) error
 	GetStatus(ctx context.Context) (int, error)
+}
+
+type MHSRepository interface {
+	GetSentences(ctx context.Context, mshq *mhs.QueryHelper, permuts, limit int) ([]string, error)
 }

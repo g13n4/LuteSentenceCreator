@@ -15,13 +15,13 @@ type dictionaryEntryConnectionsRepository struct {
 func (dec *dictionaryEntryConnectionsRepository) BulkSave(objs []*conns.DictionaryEntry) error {
 	connections := make([][]any, len(objs))
 	for i, o := range objs {
-		connections[i] = []any{o.Entry, o.DictionaryId}
+		connections[i] = []any{o.Entry, o.DictionaryCategoryId, o.DictionaryId}
 	}
 
 	_, err := dec.db.CopyFrom(
 		context.Background(),
 		pgx.Identifier{"dictionaries__mtm__entries"},
-		[]string{"entry", "ed_id"},
+		[]string{"entry", "dc_id", "d_id"},
 		pgx.CopyFromRows(connections),
 	)
 

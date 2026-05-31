@@ -14,11 +14,14 @@ func OpenFile(fileName string) (*os.File, func() error, error) {
 	file, err := os.Open(fn)
 
 	closer := func() error {
-		err := file.Close()
-		if strings.Contains(err.Error(), "file already closed") {
-			return nil
+		err = file.Close()
+		if err != nil {
+			if strings.Contains(err.Error(), "file already closed") {
+				return nil
+			}
+			return err
 		}
-		return err
+		return nil
 	}
 
 	return file, closer, err

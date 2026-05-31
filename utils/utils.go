@@ -35,16 +35,13 @@ func GetUTFValue(v string) int {
 	return int(val[0])
 }
 
-func ToSafeString(v *string) string {
-	if v == nil {
-		return "-"
-	}
-	return *v
-}
-
-func ToSafeInteger(v *int) string {
+func PIntegerToSafeString(v *int) string {
 	if v == nil {
 		return "-"
 	}
 	return fmt.Sprintf("%v", *v)
+}
+
+func IntegerToSafeString(v int) string {
+	return fmt.Sprintf("%v", v)
 }

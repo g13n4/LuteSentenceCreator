@@ -49,7 +49,7 @@ func FillEntry(ss *state.Singleton, entryData io.Reader) error {
 	deSaver := utils.NewBulkSaveHelper[*conns.DictionaryEntry](deRepo, ss.BatchSize)
 
 	uniqueKanjiTOReadingConnection := make(map[int]struct{})
-	uniqueReadingDictionary := make(map[int]struct{})
+
 	for e := range eChan {
 		if !e.IsPopular() {
 			continue
@@ -82,18 +82,13 @@ func FillEntry(ss *state.Singleton, entryData io.Reader) error {
 
 			}
 		}
+
 		for _, dName := range *e.GetAllDictionaries() {
 			dictObj, dictCatObj := dictPool.GetDictionaryData(dName)
-
-			_, ok := uniqueReadingDictionary[dictObj.Id]
-			if ok {
-				continue
-			}
 
 			deObj := conns.DictionaryEntry{Entry: e.EntryId, DictionaryId: dictObj.Id, DictionaryCategoryId: dictCatObj.Id}
 			deSaver.Add(&deObj)
 
-			uniqueReadingDictionary[dictObj.Id] = struct{}{}
 		}
 
 		err = eSaver.Add(e)

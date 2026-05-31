@@ -13,7 +13,7 @@ type readingKanjiConnectionsRepository struct {
 }
 
 func (rkc *readingKanjiConnectionsRepository) BulkSave(objs []*conns.ReadingKanji) error {
-	connections := make([][]any, 0)
+	connections := make([][]any, len(objs))
 	for i, o := range objs {
 		connections[i] = []any{o.ReadingId, o.KanjiId}
 	}
@@ -21,7 +21,7 @@ func (rkc *readingKanjiConnectionsRepository) BulkSave(objs []*conns.ReadingKanj
 	_, err := rkc.db.CopyFrom(
 		context.Background(),
 		pgx.Identifier{"readings__mtm__kanjis"},
-		[]string{"r_id", "l_id"},
+		[]string{"r_id", "k_id"},
 		pgx.CopyFromRows(connections),
 	)
 

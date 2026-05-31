@@ -33,7 +33,7 @@ func FillKanji(ss *state.Singleton, r io.Reader) error {
 	kSaver := utils.NewBatchSaveHelper[*kanji.Kanji](kanjiRepo, ss.BatchSize)
 
 	for k := range kChan {
-		literal := int(k.Literal[0])
+		literal := utils.GetUTFValue(k.Literal)
 		ss.KanjiPool[literal] = struct{}{}
 		err = kSaver.Add(k)
 		if err != nil {

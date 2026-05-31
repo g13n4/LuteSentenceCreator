@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/g13n4/LuteSentencePicker/domain"
 	"github.com/g13n4/LuteSentencePicker/kanji"
@@ -43,4 +44,25 @@ func (k *kanjiRepository) BulkSave(objs []*kanji.Kanji) error {
 	)
 
 	return err
+}
+
+func (k *kanjiRepository) GetUniqueFields(ctx context.Context, field string) ([]int, error) {
+	query := fmt.Sprintf("SELECT DISTINCT %s FROM kanjis WHERE %s IS NOT NULL ORDER BY %s", field, field, field)
+	rows, err := k.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]int, 0)
+	for rows.Next() {
+		var s int
+
+		err := rows.Scan(&s)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+
+	return out, nil
 }
