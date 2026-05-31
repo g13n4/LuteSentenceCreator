@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentence Creator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-8 text-gray-800">
+
+<div class="max-w-1/2 w-full bg-white p-6 rounded-xl shadow-md space-y-8">
+    <div hx-get="/db-state" hx-trigger="every 1s" hx-target="#db-state" hx-swap="innerHTML">
+        <h1 class="text-2xl font-bold text-center">Loading database state...</h1>
+    </div>
+
+    <div class="flex flex-columns">
+        <div class="[&>section]:my-1">
+            <h2 class="text-lg font-semibold text-center text-gray-700 m-2">Kanji</h2>
+            <section class="space-y-3">
+                <p class="text-sm text-center">JLPT</p>
+                <div class="grid-column grid-cols-6">
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        ALL
+                    </button>
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        1
+                    </button>
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        2
+                    </button>
+                    <button hx-post="/action?type=Right" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        3
+                    </button>
+                    <button hx-post="/action?type=Right" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        4
+                    </button>
+                    <button hx-post="/action?type=Right" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        5
+                    </button>
+                </div>
+
+            </section>
+
+            <section class="space-y-3">
+                <p class="text-sm text-center">Frequency</p>
+                <div class="grid-column grid-cols-6">
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        ALL
+                    </button>
+                </div>
+            </section>
+
+            <section class="space-y-3">
+                <p class="text-sm text-center">Grades</p>
+                <div class="grid-column grid-cols-6">
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        ALL
+                    </button>
+                    {{range .Grades}}
+                    <button hx-post="/action?type=Right" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        {{.Value}}
+                    </button>
+                    {{end}}
+                </div>
+            </section>
+
+            <section class="space-y-3">
+                <p class="text-sm text-center">Stroke count</p>
+                <div class="grid-column grid-cols-6">
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        ALL
+                    </button>
+                    {{range .StrokeCount}}
+                    <button hx-post="/action?type=Right" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        {{.Value}}
+                    </button>
+                    {{end}}
+                </div>
+            </section>
+
+        </div>
+        <div class="[&>section]:my-1">
+            <h2 class="text-lg font-semibold text-center text-gray-700 m-2">Entry (Dictionary)</h2>
+            <section class="space-y-3">
+                <p class="text-sm text-center">News</p>
+                <div class="grid-column grid-cols-6">
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        ALL
+                    </button>
+                    {{range .News}}
+                    <button hx-post="/action?type=Right {{.Value}}" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        {{.Value}}
+                    </button>
+                    {{end}}
+                </div>
+            </section>
+
+            <section class="space-y-3">
+                <p class="text-sm text-center">Ichimango goi bunruishuu</p>
+                <div class="grid-column grid-cols-6">
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        ALL
+                    </button>
+                    {{range .Ichi}}
+                    <button hx-post="/action?type=Right {{.Value}}" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        {{.Value}}
+                    </button>
+                    {{end}}
+                </div>
+            </section>
+
+            <section class="space-y-3">
+                <p class="text-sm text-center">Common (but not included)</p>
+                <div class="grid-column grid-cols-6">
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        ALL
+                    </button>
+                    {{range .Spec}}
+                    <button hx-post="/action?type=Right {{.Value}}" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        {{.Value}}
+                    </button>
+                    {{end}}
+                </div>
+            </section>
+
+            <section class="space-y-3">
+                <p class="text-sm text-center">Gaijin (loanwords)</p>
+                <div class="grid-column grid-cols-6">
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        ALL
+                    </button>
+                    {{range .Gai}}
+                    <button hx-post="/action?type=Right {{.Value}}" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        {{.Value}}
+                    </button>
+                    {{end}}
+                </div>
+            </section>
+
+            <section class="space-y-3">
+                <p class="text-sm text-center">Frequency ranking</p>
+                <div class="grid-column grid-cols-6">
+                    <button hx-post="/action?type=Middle" hx-target="#action-result"
+                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        ALL
+                    </button>
+                    {{range .Nf}}
+                    <button hx-post="/action?type=Right {{.Value}}" hx-target="#action-result"
+                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                        {{.Value}}
+                    </button>
+                    {{end}}
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+</body>
+</html>
