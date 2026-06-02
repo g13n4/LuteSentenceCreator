@@ -63,13 +63,17 @@ func ParseSentencesWithSudachi(inputFile, outputFile string) error {
 		return errors.New("sentence file does not exist. You can download one from tatoeba")
 	}
 
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+	_, err := os.Stat(outputFile)
+	if os.IsNotExist(err) {
 		sentenceSudachiPath := os.Getenv("SUDACHI_PATH")
 		if sentenceSudachiPath == "" {
 			return errors.New("can not find sudachi executable")
 		}
+		if _, err := os.Stat(sentenceSudachiPath); os.IsNotExist(err) {
+			return errors.New("no sudachi executable found")
+		}
 
-		err := exec.Command(
+		err := exec.Command("sh", "-c",
 			fmt.Sprintf("%s -w --split-sentences no %s > %s",
 				sentenceSudachiPath,
 				inputFile,

@@ -6,6 +6,7 @@ import (
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/domain"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/jmdict"
 	utils2 "github.com/g13n4/LuteSentencePicker/sentence_creator/utils"
+	"github.com/jackc/pgx/v5"
 )
 
 type entryRepository struct {

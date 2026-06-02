@@ -47,8 +47,8 @@ func IntegerToSafeString(v int) string {
 }
 
 func StringOrDash(s string) string {
-	if s != "" {
-		return s
+	if s == "" {
+		return "-"
 	}
-	return "-"
+	return s
 }

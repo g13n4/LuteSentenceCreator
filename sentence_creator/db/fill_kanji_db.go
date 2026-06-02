@@ -10,6 +10,7 @@ import (
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/repository"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/state"
 	utils2 "github.com/g13n4/LuteSentencePicker/sentence_creator/utils"
+	"github.com/jackc/pgx/v5"
 )
 
 func FillKanji(ss *state.Singleton, r io.Reader) error {
@@ -28,7 +29,7 @@ func FillKanji(ss *state.Singleton, r io.Reader) error {
 
 	kanjiRepo := repository.NewKanjiRepository(tx)
 
-	kChan := parser.CreateXMLParsingChan[*kanji.Kanji](r, kanji.KanjiNodeName, ss.BatchSize)
+	kChan := parser.CreateXMLParsingChan[*kanji.Kanji](r, kanji.NodeName, ss.BatchSize)
 	kSaver := utils2.NewBatchSaveHelper[*kanji.Kanji](kanjiRepo, ss.BatchSize)
 
 	for k := range kChan {

@@ -13,7 +13,7 @@ type dictionaryRepository struct {
 }
 
 func (dr *dictionaryRepository) GetDictionaries(ctx context.Context) ([]*jmdict.Dictionary, error) {
-	query := "SELECT id, name, category, number from dictionaries"
+	query := "SELECT id, name, category, number from dictionaries ORDER BY id"
 	rows, err := dr.db.Query(ctx, query)
 	if err != nil {
 		return nil, err

@@ -5,6 +5,7 @@ import (
 
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/domain"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/jmdict"
+	"github.com/jackc/pgx/v5"
 )
 
 type dictionaryCategoryRepository struct {

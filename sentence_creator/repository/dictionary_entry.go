@@ -5,6 +5,7 @@ import (
 
 	conns "github.com/g13n4/LuteSentencePicker/sentence_creator/connections"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/domain"
+	"github.com/jackc/pgx/v5"
 )
 
 type dictionaryEntryConnectionsRepository struct {

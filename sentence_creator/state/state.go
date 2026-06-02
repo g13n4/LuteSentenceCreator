@@ -25,7 +25,8 @@ type Singleton struct {
 func GetStateSingleton() *Singleton {
 	err := godotenv.Load()
 
-	if err != nil {
+	_, dockerErr := os.Stat("/.dockerenv")
+	if err != nil && dockerErr != nil {
 		log.Fatal("Error loading .env file")
 	}
 

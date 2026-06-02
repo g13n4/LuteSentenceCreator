@@ -1,10 +1,27 @@
 package mhs
 
 import (
+	"errors"
 	"fmt"
+
+	"github.com/labstack/echo/v5"
 
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/utils"
 )
+
+func NewQueryHelper(c *echo.Context) (*QueryHelper, error) {
+	var qh QueryHelper
+	qh.JLPT = c.QueryParam("jlpt")
+	qh.Frequency = c.QueryParam("freq")
+	qh.Grade = c.QueryParam("grade")
+	qh.StrokeCount = c.QueryParam("stroke_count")
+	qh.Dictionary = c.QueryParam("dictionary")
+	qh.DictionaryCategory = c.QueryParam("category")
+	if qh.IsEmpty() {
+		return nil, errors.New("all query parameters are empty")
+	}
+	return &qh, nil
+}
 
 type QueryHelper struct {
 	JLPT        string
@@ -43,7 +60,7 @@ func (q *QueryHelper) String() string {
 		o += fmt.Sprintf("dictionary_category-%s", q.DictionaryCategory)
 	}
 
-	return ""
+	return o
 }
 
 func (q *QueryHelper) StringFull() string {
@@ -60,46 +77,46 @@ func (q *QueryHelper) StringFull() string {
 
 func (q *QueryHelper) GetSQLCondition(tableName string) string {
 	if tableName != "" {
-		tableName = "." + tableName
+		tableName = tableName + "."
 	}
 
 	if q.JLPT != "" {
 		if q.JLPT == "0" {
-			return fmt.Sprintf("%s.jlpt IS NOT NULL", tableName)
+			return fmt.Sprintf("%sjlpt IS NOT NULL", tableName)
 		}
 
-		return fmt.Sprintf("%s.jlpt = %v ", tableName, q.JLPT)
+		return fmt.Sprintf("%sjlpt = %v ", tableName, q.JLPT)
 	}
 
 	if q.Frequency != "" {
 		if q.Frequency == "0" {
-			return fmt.Sprintf("%s.freq IS NOT NULL", tableName)
+			return fmt.Sprintf("%sfreq IS NOT NULL", tableName)
 		}
 
-		return fmt.Sprintf("%s.freq = %v ", tableName, q.Frequency)
+		return fmt.Sprintf("%sfreq = %v ", tableName, q.Frequency)
 	}
 
 	if q.Grade != "" {
 		if q.Grade == "0" {
-			return fmt.Sprintf("%s.grade IS NOT NULL", tableName)
+			return fmt.Sprintf("%sgrade IS NOT NULL", tableName)
 		}
 
-		return fmt.Sprintf("%s.grade = %v ", tableName, q.Grade)
+		return fmt.Sprintf("%sgrade = %v ", tableName, q.Grade)
 	}
 
 	if q.StrokeCount != "" {
 		if q.StrokeCount == "0" {
-			return fmt.Sprintf("%s.stroke_count IS NOT NULL", tableName)
+			return fmt.Sprintf("%sstroke_count IS NOT NULL", tableName)
 		}
 
-		return fmt.Sprintf("%s.stroke_count = %v ", tableName, q.StrokeCount)
+		return fmt.Sprintf("%sstroke_count = %v ", tableName, q.StrokeCount)
 	}
 
 	if q.DictionaryCategory != "" {
-		return fmt.Sprintf("%s.dc_id = %v ", tableName, q.DictionaryCategory)
+		return fmt.Sprintf("%sdc_id = %v ", tableName, q.DictionaryCategory)
 	}
 
-	return fmt.Sprintf("%s.d_id = %v ", tableName, q.Dictionary)
+	return fmt.Sprintf("%sd_id = %v ", tableName, q.Dictionary)
 }
 
 func (q *QueryHelper) IsKanji() bool {
@@ -109,11 +126,14 @@ func (q *QueryHelper) IsKanji() bool {
 	return true
 }
 
-func (q *QueryHelper) Clean() {
-	q.JLPT = ""
-	q.Frequency = ""
-	q.Grade = ""
-	q.StrokeCount = ""
-	q.Dictionary = ""
-	q.DictionaryCategory = ""
+func (q *QueryHelper) IsEmpty() bool {
+	if q.JLPT == "" &&
+		q.Frequency == "" &&
+		q.Grade == "" &&
+		q.StrokeCount == "" &&
+		q.Dictionary == "" &&
+		q.DictionaryCategory == "" {
+		return true
+	}
+	return false
 }

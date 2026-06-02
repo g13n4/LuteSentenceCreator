@@ -7,7 +7,7 @@ import (
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/utils"
 )
 
-const KanjiNodeName = "character"
+const NodeName = "character"
 
 type Kanji struct {
 	Literal string `xml:"literal"`

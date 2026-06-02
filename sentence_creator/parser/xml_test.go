@@ -121,7 +121,7 @@ func TestCreateXMLParsingChanKanji(t *testing.T) {
 	}
 
 	buffer := bytes.NewBuffer(KanjiFile)
-	kChan := CreateXMLParsingChan[*kanji.Kanji](buffer, kanji.KanjiNodeName, 1)
+	kChan := CreateXMLParsingChan[*kanji.Kanji](buffer, kanji.NodeName, 1)
 	output := make([]*kanji.Kanji, 0)
 
 	for k := range kChan {

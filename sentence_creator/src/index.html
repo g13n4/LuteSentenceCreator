@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Sentence Creator</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
@@ -10,7 +10,7 @@
 <body class="bg-gray-100 min-h-screen flex flex-col items-center p-8 text-gray-800">
 
 <div class="max-w-1/2 w-full bg-white p-6 rounded-xl shadow-md space-y-8">
-    <div hx-get="/db-state" hx-trigger="every 1s" hx-target="#db-state" hx-swap="innerHTML">
+    <div hx-get="/db-state" hx-swap="innerHTML" hx-target="#db-state" hx-trigger="every 1s">
         <h1 class="text-2xl font-bold text-center">Loading database state...</h1>
     </div>
 
@@ -19,74 +19,107 @@
             <h2 class="text-lg font-semibold text-center text-gray-700 m-2">Kanji</h2>
             <section class="space-y-3">
                 <p class="text-sm text-center">JLPT</p>
-                <div class="grid-column grid-cols-6">
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        ALL
-                    </button>
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                <div class="flex">
+                    <div class="flex-none">
+                <button class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                        hx-post="/sentences?jlpt=0"
+                >
+                    ALL
+                </button>
+                    </div>
+                <div class="flex-1 grid grid-cols-6 gap-2">
+                    <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-post="/sentences?jlpt=1"
+                    >
                         1
                     </button>
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-post="/sentences?jlpt=2"
+                    >
                         2
                     </button>
-                    <button hx-post="/action?type=Right" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-post="/sentences?jlpt=3"
+                    >
                         3
                     </button>
-                    <button hx-post="/action?type=Right" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-post="/sentences?jlpt=4"
+                    >
                         4
                     </button>
-                    <button hx-post="/action?type=Right" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-post="/sentences?jlpt=5"
+                    >
                         5
                     </button>
-                </div>
 
+                </div>
+                </div>
             </section>
 
             <section class="space-y-3">
                 <p class="text-sm text-center">Frequency</p>
                 <div class="grid-column grid-cols-6">
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <button class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-target="#action-result"
+                            name="freq"
+                            type="button"
+                            value="0">
                         ALL
                     </button>
                 </div>
             </section>
 
             <section class="space-y-3">
-                <p class="text-sm text-center">Grades</p>
-                <div class="grid-column grid-cols-6">
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                <p class="text-sm text-center">Grade</p>
+                <div class="flex-row w-min">
+                    <div class="flex-none">
+                    <button class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-target="#action-result"
+                            name="grade"
+                            type="button"
+                            value="0">
                         ALL
                     </button>
+                        </div>
+                        <div class="grid-column grid-cols-6">
                     {{range .Grades}}
-                    <button hx-post="/action?type=Right" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-target="#action-result"
+                            name="grade"
+                            type="button"
+                            value="{{.Id}}">
                         {{.Value}}
                     </button>
                     {{end}}
+                </div>
                 </div>
             </section>
 
             <section class="space-y-3">
                 <p class="text-sm text-center">Stroke count</p>
-                <div class="grid-column grid-cols-6">
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                <div class="flex-row w-min">
+                    <div class="flex-none">
+                    <button class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-target="#action-result"
+                            name="stroke_count"
+                            type="button"
+                            value="0">
                         ALL
                     </button>
+                    </div>
+                <div class="grid-column grid-cols-6">
                     {{range .StrokeCount}}
-                    <button hx-post="/action?type=Right" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-target="#action-result"
+                            name="stroke_count"
+                            type="button"
+                            value="{{.Id}}">
                         {{.Value}}
                     </button>
                     {{end}}
+                </div>
                 </div>
             </section>
 
@@ -95,81 +128,131 @@
             <h2 class="text-lg font-semibold text-center text-gray-700 m-2">Entry (Dictionary)</h2>
             <section class="space-y-3">
                 <p class="text-sm text-center">News</p>
-                <div class="grid-column grid-cols-6">
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <div class="flex-row w-min">
+                        <div class="flex-none">
+                    <button class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-target="#action-result"
+                            name="category"
+                            type="button"
+                            value="1">
                         ALL
                     </button>
+                        </div>
+                            <div class="grid-column grid-cols-6">
                     {{range .News}}
-                    <button hx-post="/action?type=Right {{.Value}}" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
+                    <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                            hx-target="#action-result"
+                            name="dictionary"
+                            type="button"
+                            value="{{.Id}}">
                         {{.Value}}
                     </button>
                     {{end}}
+                </div>
                 </div>
             </section>
 
             <section class="space-y-3">
                 <p class="text-sm text-center">Ichimango goi bunruishuu</p>
-                <div class="grid-column grid-cols-6">
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        ALL
-                    </button>
-                    {{range .Ichi}}
-                    <button hx-post="/action?type=Right {{.Value}}" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        {{.Value}}
-                    </button>
-                    {{end}}
+                <div class="flex-row w-min">
+                    <div class="flex-none">
+                        <button class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                                hx-target="#action-result"
+                                name="category"
+                                type="button"
+                                value="2">
+                            ALL
+                        </button>
+                    </div>
+                    <div class="grid-column grid-cols-6">
+                        {{range .Ichi}}
+                        <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                                hx-target="#action-result"
+                                name="dictionary"
+                                type="button"
+                                value="{{.Id}}">
+                            {{.Value}}
+                        </button>
+                        {{end}}
+                    </div>
                 </div>
             </section>
 
             <section class="space-y-3">
                 <p class="text-sm text-center">Common (but not included)</p>
-                <div class="grid-column grid-cols-6">
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        ALL
-                    </button>
-                    {{range .Spec}}
-                    <button hx-post="/action?type=Right {{.Value}}" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        {{.Value}}
-                    </button>
-                    {{end}}
+                <div class="flex-row w-min">
+                    <div class="flex-none">
+                        <button class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                                hx-target="#action-result"
+                                name="category"
+                                type="button"
+                                value="3">
+                            ALL
+                        </button>
+                    </div>
+                    <div class="grid-column grid-cols-6">
+                        {{range .Spec}}
+                        <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                                hx-target="#action-result"
+                                name="dictionary"
+                                type="button"
+                                value="{{.Id}}">
+                            {{.Value}}
+                        </button>
+                        {{end}}
+                    </div>
                 </div>
             </section>
 
             <section class="space-y-3">
                 <p class="text-sm text-center">Gaijin (loanwords)</p>
-                <div class="grid-column grid-cols-6">
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        ALL
-                    </button>
-                    {{range .Gai}}
-                    <button hx-post="/action?type=Right {{.Value}}" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        {{.Value}}
-                    </button>
-                    {{end}}
+                <div class="flex-row w-min">
+                    <div class="flex-none">
+                        <button class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                                hx-target="#action-result"
+                                name="category"
+                                type="button"
+                                value="4">
+                            ALL
+                        </button>
+                    </div>
+                    <div class="grid-column grid-cols-6">
+                        {{range .Gai}}
+                        <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                                hx-target="#action-result"
+                                name="dictionary"
+                                type="button"
+                                value="{{.Id}}">
+                            {{.Value}}
+                        </button>
+                        {{end}}
+                    </div>
                 </div>
             </section>
 
             <section class="space-y-3">
                 <p class="text-sm text-center">Frequency ranking</p>
-                <div class="grid-column grid-cols-6">
-                    <button hx-post="/action?type=Middle" hx-target="#action-result"
-                            class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        ALL
-                    </button>
-                    {{range .Nf}}
-                    <button hx-post="/action?type=Right {{.Value}}" hx-target="#action-result"
-                            class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer">
-                        {{.Value}}
-                    </button>
-                    {{end}}
+                <div class="flex-row w-min">
+                    <div class="flex-none">
+                        <button class="px-4 py-2 mx-3 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                                hx-target="#action-result"
+                                name="category"
+                                type="button"
+                                value="5">
+                            ALL
+                        </button>
+                    </div>
+                    <div class="grid-column grid-cols-6">
+                        {{range .Nf}}
+                        <button class="px-4 py-2 mx-0.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                                hx-target="#action-result"
+                                name="dictionary"
+                                type="button"
+                                value="{{.Id}}">
+                            {{.Value}}
+                        </button>
+                        {{end}}
+                    </div>
                 </div>
             </section>
         </div>

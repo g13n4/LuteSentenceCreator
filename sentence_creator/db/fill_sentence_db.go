@@ -11,6 +11,7 @@ import (
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/state"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/tatoeba"
 	utils2 "github.com/g13n4/LuteSentencePicker/sentence_creator/utils"
+	"github.com/jackc/pgx/v5"
 )
 
 func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) error {

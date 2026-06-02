@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sync/atomic"
+	"time"
 
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/application"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/db"
@@ -40,14 +41,13 @@ func main() {
 
 	sp := db.NewStatusPool()
 	mhsRepo := repository.NewMHSRepository(stateSingleton.Pool)
-	qh := mhs.QueryHelper{}
 
 	var lastStepValue int64
 	for lastStepValue < 6 {
 		lastStepValue = dbStatus.Load()
 		status, ok := sp.PopStatus(lastStepValue)
 		if ok {
-			fmt.Println(status.Message)
+			log.Println(status.Message)
 		}
 	}
 
@@ -70,11 +70,12 @@ func main() {
 	})
 
 	e.POST("/sentences", func(c *echo.Context) error {
-		qh.Clean()
+		qh, err := mhs.NewQueryHelper(c)
+		if err != nil {
+			return c.String(http.StatusBadRequest, err.Error())
+		}
 
-		outputName := fmt.Sprintf("output-%v.txt", qh)
-
-		fn := filepath.Join(sentencePath, outputName)
+		fn := filepath.Join(sentencePath, "output-"+qh.String()+time.Now().String()+".txt")
 
 		file, err := os.Create(fn)
 		defer func() {
@@ -88,14 +89,7 @@ func main() {
 			panic("have no access to output file")
 		}
 
-		qh.JLPT = c.QueryParam("jlpt")
-		qh.Frequency = c.QueryParam("freq")
-		qh.Grade = c.QueryParam("grade")
-		qh.StrokeCount = c.QueryParam("stroke_count")
-		qh.Dictionary = c.QueryParam("dictionary")
-		qh.DictionaryCategory = c.QueryParam("category")
-
-		err = mhsRepo.GetSentences(context.Background(), file, qh, 5, 1000)
+		err = mhsRepo.GetSentences(context.Background(), file, *qh, 5, 1000)
 		if err != nil {
 			panic(err)
 		}

@@ -31,6 +31,7 @@ func (mhsr *mhsRepository) GetSentences(ctx context.Context, outputFile *os.File
 	var sChan <-chan *[]int
 	var err error
 
+	log.Println("Query sentences")
 	if !mshq.IsKanji() {
 		sChan, err = mhsr.getSentencesForEntry(ctx, mshq)
 	} else {
@@ -39,15 +40,18 @@ func (mhsr *mhsRepository) GetSentences(ctx context.Context, outputFile *os.File
 	if err != nil {
 		return err
 	}
+	log.Println("Filling input with data")
 	fileIn, fileOut, err := mhsr.createSentenceSetFileInput(sChan)
 	if err != nil {
 		return err
 	}
+	log.Println("Run graph optimization")
 	sentenceIds, err := mhsr.processSentenceSetFile(fileIn, fileOut, permuts)
 	if err != nil {
 		return err
 	}
 
+	log.Println("Creating output")
 	return mhsr.saveSentencesSet(ctx, outputFile, sentenceIds, limit)
 }
 
@@ -108,7 +112,7 @@ func (mhsr *mhsRepository) createSentenceSetFileInput(senChan <-chan *[]int) (st
 	tempNameOutput := fmt.Sprintf("output-%v.dat", tempPrefix)
 
 	mhsInput := filepath.Join(os.TempDir(), tempNameInput)
-	mhsOutput := filepath.Join(os.TempDir(), tempNameOutput)
+	mhsOutputName := filepath.Join(os.TempDir(), tempNameOutput)
 
 	file, err := os.Create(mhsInput)
 	defer func() {
@@ -143,7 +147,7 @@ func (mhsr *mhsRepository) createSentenceSetFileInput(senChan <-chan *[]int) (st
 		return "", "", err
 	}
 
-	return mhsInput, mhsOutput, nil
+	return mhsInput, mhsOutputName, nil
 }
 
 func (mhsr *mhsRepository) processSentenceSetFile(input, output string, permuts int) (<-chan *string, error) {
