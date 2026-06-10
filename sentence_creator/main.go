@@ -14,7 +14,6 @@ import (
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/application"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/db"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/mhs"
-	"github.com/g13n4/LuteSentencePicker/sentence_creator/repository"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/state"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -40,7 +39,7 @@ func main() {
 	}
 
 	sp := db.NewStatusPool()
-	mhsRepo := repository.NewMHSRepository(stateSingleton.Pool)
+	mhsRepo := mhs.NewExecutor(stateSingleton.Pool)
 
 	var lastStepValue int64
 	for lastStepValue < 6 {
@@ -75,7 +74,8 @@ func main() {
 			return c.String(http.StatusBadRequest, err.Error())
 		}
 
-		fn := filepath.Join(sentencePath, "output-"+qh.String()+time.Now().String()+".txt")
+		timeNow := time.Now().Format("2006-01-02 15:04:05")
+		fn := filepath.Join(sentencePath, "output-"+qh.String()+timeNow+".txt")
 
 		file, err := os.Create(fn)
 		defer func() {

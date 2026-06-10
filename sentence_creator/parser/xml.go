@@ -6,8 +6,8 @@ import (
 	"io"
 )
 
-type Popular interface {
-	IsPopular() bool
+type Usage interface {
+	IsInUsage() bool
 }
 
 type XMLDictionary struct {
@@ -15,7 +15,7 @@ type XMLDictionary struct {
 	NodeName string
 }
 
-func CreateXMLParsingChan[T Popular](r io.Reader, nodeName string, cSize int) <-chan T {
+func CreateXMLParsingChan[T Usage](r io.Reader, nodeName string, cSize int) <-chan T {
 	fh := xml.NewDecoder(r)
 	fh.Strict = false
 

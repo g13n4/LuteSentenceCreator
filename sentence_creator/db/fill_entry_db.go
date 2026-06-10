@@ -51,7 +51,7 @@ func FillEntry(ss *state.Singleton, entryData io.Reader) error {
 	uniqueKanjiTOReadingConnection := make(map[int]struct{})
 
 	for e := range eChan {
-		if !e.IsPopular() {
+		if !e.IsInUsage() {
 			continue
 		}
 

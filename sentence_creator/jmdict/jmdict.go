@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"maps"
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -34,6 +35,11 @@ type Reading struct {
 
 func (r *Reading) IsInDictionary() bool {
 	return len(r.Dictionary) == 0
+}
+
+func (r *Reading) IsRealWord() bool {
+	jpRegex := regexp.MustCompile(`^[\p{Hiragana}\p{Katakana}\p{Han}]+$`)
+	return jpRegex.MatchString(r.Word)
 }
 
 func (r *Reading) NewsInDictionary() bool {
@@ -127,8 +133,11 @@ func (e *Entry) String() string {
 	return fmt.Sprintf("%s\n%s", wk, wok)
 }
 
-func (e *Entry) IsPopular() bool {
+func (e *Entry) IsInUsage() bool {
 	for _, r := range e.Readings {
+		if !r.IsRealWord() {
+			return false
+		}
 		if r.IsInDictionary() {
 			return true
 		}

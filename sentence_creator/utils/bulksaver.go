@@ -11,7 +11,7 @@ type BulkSaveHelper[T any] struct {
 }
 
 func NewBulkSaveHelper[T any](bulkSaver BulkSaver[T], size int) *BulkSaveHelper[T] {
-	return &BulkSaveHelper[T]{objPool: make([]T, 0), size: size, bulkSaver: bulkSaver}
+	return &BulkSaveHelper[T]{objPool: make([]T, 0, size), size: size, bulkSaver: bulkSaver}
 }
 
 func (bsh *BulkSaveHelper[T]) Add(ojb T) {

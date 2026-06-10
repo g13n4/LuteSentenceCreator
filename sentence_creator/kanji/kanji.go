@@ -18,7 +18,7 @@ type Kanji struct {
 	StrokeCount *int `xml:"misc>stroke_count"`
 }
 
-func (k *Kanji) IsPopular() bool {
+func (k *Kanji) IsInUsage() bool {
 	if k.JLPT != nil || k.Frequency != nil || k.Grade != nil {
 		return true
 	}

@@ -1,4 +1,3 @@
-
 FROM golang:1.26.3-bookworm
 
 RUN mkdir -p /shared
@@ -18,8 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN git clone https://github.com/g13n4/Minimal-Hitting-Set-Algorithms .
 
 RUN make
-
-RUN ln -s /mhs/agdmhs /shared
 
 WORKDIR /app
 COPY go.mod go.sum ./

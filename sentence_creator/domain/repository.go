@@ -2,11 +2,9 @@ package domain
 
 import (
 	"context"
-	"os"
 
 	jmdict2 "github.com/g13n4/LuteSentencePicker/sentence_creator/jmdict"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/kanji"
-	"github.com/g13n4/LuteSentencePicker/sentence_creator/mhs"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/tatoeba"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/utils"
 )
@@ -47,8 +45,4 @@ type ConnectionsRepository[T any] interface {
 type DBStateRepository interface {
 	SetStatus(ctx context.Context, val int) error
 	GetStatus(ctx context.Context) (int, error)
-}
-
-type MHSRepository interface {
-	GetSentences(ctx context.Context, outputFile *os.File, mshq mhs.QueryHelper, permuts, limit int) error
 }

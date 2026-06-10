@@ -19,13 +19,13 @@ func (src *sentenceReadingConnectionsRepository) BulkSave(objs []*conns.Sentence
 			continue
 		}
 
-		connections = append(connections, []any{o.ReadingId, o.SentenceId})
+		connections = append(connections, []any{o.SentenceId, o.ReadingId})
 	}
 
 	_, err := src.db.CopyFrom(
 		context.Background(),
 		pgx.Identifier{"sentences__mtm__readings"},
-		[]string{"r_id", "s_id"},
+		[]string{"s_id", "r_id"},
 		pgx.CopyFromRows(connections),
 	)
 
