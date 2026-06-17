@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/state"
@@ -45,7 +46,7 @@ func TestCreateMHSFileInput(t *testing.T) {
 		}
 	}
 
-	err := mhsExecutor.createMHSFileInput(mhsInput, &testMap)
+	err := mhsExecutor.createMHSFileInput(mhsInput, testMap)
 	if err != nil {
 		t.Errorf("Error scanning row: %v", err)
 	}
@@ -65,6 +66,7 @@ func TestCreateMHSFileInput(t *testing.T) {
 
 // go test -run ^TestProcessSentenceSetFile ./mhs
 func TestProcessSentenceSetFile(t *testing.T) {
+	var wg sync.WaitGroup
 	stateSingleton := state.GetStateSingleton()
 
 	mhsExecutor := NewExecutor(stateSingleton.Pool)
@@ -77,28 +79,33 @@ func TestProcessSentenceSetFile(t *testing.T) {
 1 3 `)
 
 	err := os.WriteFile(mhsInput, testExample, 0777)
-	defer func() {
-		err := os.Remove(mhsInput)
-		if err != nil {
-			t.Errorf("error removing file: %+v", err)
-		}
-	}()
 
 	if err != nil {
 		t.Errorf("can't write to a file in a directory %v", err)
 	}
 
-	strChan, err := mhsExecutor.processSentenceSetFile(mhsInput, mhsOutput, 3)
-	if err != nil {
-		t.Errorf("error using mhsa exec %v", err)
-	}
+	testChan := make(chan *string)
+
+	wg.Go(func() {
+		err = mhsExecutor.processSentenceSetFile(mhsInput, mhsOutput, testChan)
+		if err != nil {
+			t.Errorf("error using mhsa exec %v", err)
+		}
+	})
+
+	go func() {
+		wg.Wait()
+		close(testChan)
+	}()
 
 	count := 0
 	var output string
-	for line := range strChan {
+
+	for line := range testChan {
 		count++
 		output += *line
 	}
+
 	if count < 3 {
 		t.Errorf("expected at least 3 numbers in a set and got %v", count)
 	}
@@ -118,32 +125,82 @@ func TestCreateSentenceSet(t *testing.T) {
 	querySQL := "SELECT smr.r_id, smr.s_id from sentences__mtm__readings smr JOIN readings r ON smr.r_id = r.id JOIN dictionaries__mtm__entries dme ON r.entry = dme.entry " + limitToSubquery
 	groupedSQL := "SELECT smr.r_id, count(smr.s_id) from sentences__mtm__readings smr JOIN readings r ON smr.r_id = r.id JOIN dictionaries__mtm__entries dme ON r.entry = dme.entry " + limitToSubquery + " GROUP BY smr.r_id"
 
-	rows, err := stateSingleton.Pool.Query(context.Background(), querySQL)
+	rows, err := mhsExecutor.getIDs(context.Background(), querySQL)
 	if err != nil {
 		t.Errorf("Error executing query: %s\n%v", querySQL, err)
 	}
 
-	outMap, err := mhsExecutor.createSentenceSet(rows, 50)
-	if err != nil {
-		t.Errorf("Error unpacking query: %v", err)
+	outMapSize := make(map[int64]int64)
+	for row := range rows {
+		outMapSize[row.ReadingId]++
 	}
 
-	rows, err = stateSingleton.Pool.Query(context.Background(), groupedSQL)
+	groupedRows, err := stateSingleton.Pool.Query(context.Background(), groupedSQL)
 	if err != nil {
-		t.Errorf("Error executing grouped query: : %s\n%v", querySQL, err)
+		t.Errorf("Error executing grouped query: : %s\n%v", groupedSQL, err)
 	}
 
-	var rowId, rowSize int64
-	for rows.Next() {
-		err := rows.Scan(&rowId, &rowSize)
+	var rowId, groupedRowSize int64
+	for groupedRows.Next() {
+		err := groupedRows.Scan(&rowId, &groupedRowSize)
 		if err != nil {
 			t.Errorf("Error scanning row: %v", err)
 		}
-		mapRowSize := int64(len(*(*outMap)[rowId]))
 
-		if mapRowSize != rowSize {
-			t.Errorf("map element length is not equal to grouped rows. Query = %v and grouped = %v (RowId = %v)", mapRowSize, rowSize, rowId)
+		rowSize := outMapSize[rowId]
+		if outMapSize[rowId] != groupedRowSize {
+			t.Errorf("map element length is not equal to grouped rows. Query = %v and grouped = %v (RowId = %v)", rowSize, groupedRowSize, rowId)
 		}
 	}
+}
 
+type EchoContextMock struct {
+	data map[string]string
+}
+
+func (e *EchoContextMock) QueryParam(name string) string {
+	v, ok := e.data[name]
+	if !ok {
+		return ""
+	}
+	return v
+}
+
+// go test -v -run ^TestMHSExecutorKanji ./mhs
+func TestMHSExecutorKanji(t *testing.T) {
+	stateSingleton := state.GetStateSingleton()
+
+	mhsExecutor := NewExecutor(stateSingleton.Pool)
+
+	mhsInput := filepath.Join(os.TempDir(), "test-intput.dat")
+	file, err := os.Create(mhsInput)
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			t.Errorf("error closing file: %+v", err)
+		}
+
+		err = os.Remove(mhsInput)
+		if err != nil {
+			t.Errorf("error removing file: %+v", err)
+		}
+	}()
+
+	if err != nil {
+		t.Errorf("can't create a file %v", err)
+	}
+
+	cMock := EchoContextMock{data: map[string]string{
+		"dictionary": "501",
+	}}
+	qh, err := NewQueryHelper(&cMock)
+	if err != nil {
+		t.Errorf("can't create a query helper %v", err)
+	}
+
+	err = mhsExecutor.GetSentences(context.Background(), file, *qh, 1000)
+	if err != nil {
+		t.Errorf("error executing mhs %v", err)
+
+	}
 }

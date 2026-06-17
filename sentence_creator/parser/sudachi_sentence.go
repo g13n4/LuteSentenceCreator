@@ -65,10 +65,7 @@ func ParseSentencesWithSudachi(inputFile, outputFile string) error {
 
 	_, err := os.Stat(outputFile)
 	if os.IsNotExist(err) {
-		sentenceSudachiPath := os.Getenv("SUDACHI_PATH")
-		if sentenceSudachiPath == "" {
-			return errors.New("can not find sudachi executable")
-		}
+		sentenceSudachiPath := "/shared/sudachi"
 		if _, err := os.Stat(sentenceSudachiPath); os.IsNotExist(err) {
 			return errors.New("no sudachi executable found")
 		}

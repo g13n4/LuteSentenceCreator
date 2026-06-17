@@ -4,13 +4,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/labstack/echo/v5"
-
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/utils"
 )
 
-func NewQueryHelper(c *echo.Context) (*QueryHelper, error) {
+type ParamQueryExtractor interface {
+	QueryParam(name string) string
+}
+
+func NewQueryHelper(c ParamQueryExtractor) (*QueryHelper, error) {
 	var qh QueryHelper
+
 	qh.JLPT = c.QueryParam("jlpt")
 	qh.Frequency = c.QueryParam("freq")
 	qh.Grade = c.QueryParam("grade")
@@ -143,10 +146,10 @@ func (q *QueryHelper) IsEmpty() bool {
 
 func (q *QueryHelper) CreateQuery() string {
 	if q.IsKanji() {
-		return fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from sentences__mtm__readings smr JOIN readings__mtm__kanjis rmk ON rmk.r_id = smr.r_id JOIN kanjis k ON rmk.k_id = k.id WHERE %s", q.getSQLCondition())
+		return fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from kanjis k JOIN readings__mtm__kanjis rmk ON rmk.k_id = k.id INNER JOIN LATERAL (SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE rmk.r_id = smr.r_id LIMIT 15) smr ON rmk.r_id = smr.r_id WHERE %s ORDER BY smr.r_id, smr.s_id", q.getSQLCondition())
 	}
 
-	return fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from sentences__mtm__readings smr JOIN readings r ON smr.r_id = r.id JOIN dictionaries__mtm__entries dme ON r.entry = dme.entry WHERE %s", q.getSQLCondition())
+	return fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from readings r JOIN dictionaries__mtm__entries dme ON r.entry = dme.entry INNER JOIN LATERAL ( SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE r.id = smr.r_id LIMIT 15 ) smr ON r.id = smr.r_id WHERE %s ORDER BY smr.r_id, smr.s_id", q.getSQLCondition())
 }
 
 func (q *QueryHelper) GetPreallocSize() int {

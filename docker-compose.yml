@@ -34,8 +34,8 @@ services:
       dockerfile: Dockerfile
     restart: no
     environment:
-      - SUDACHI_PATH=${SUDACHI_PATH}
-      - MHS_PATH=${MHS_PATH}
+      - MHS_THREADS=${MHS_THREADS}
+      - MHS_MAX_SLICE_SIZE=${MHS_MAX_SLICE_SIZE}
 
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -58,8 +58,11 @@ services:
       sudachi:
         condition: service_completed_successfully
     ports:
-      - target: 9999
-        published: 8000
+      - "9999:9999"
+    deploy:
+      resources:
+        limits:
+          memory: 12G
 
 volumes:
   shared:

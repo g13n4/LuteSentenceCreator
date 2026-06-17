@@ -89,7 +89,7 @@ func main() {
 			panic("have no access to output file")
 		}
 
-		err = mhsRepo.GetSentences(context.Background(), file, *qh, 5, 1000)
+		err = mhsRepo.GetSentences(context.Background(), file, *qh, 1000)
 		if err != nil {
 			panic(err)
 		}
