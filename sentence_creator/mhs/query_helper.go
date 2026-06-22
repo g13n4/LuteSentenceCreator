@@ -14,6 +14,8 @@ type ParamQueryExtractor interface {
 func NewQueryHelper(c ParamQueryExtractor) (*QueryHelper, error) {
 	var qh QueryHelper
 
+	qh.MaxSentencesInJoin = utils.GetEnvIntValue("MHS_MAX_SENTENCES_PER_VALUE", 30)
+
 	qh.JLPT = c.QueryParam("jlpt")
 	qh.Frequency = c.QueryParam("freq")
 	qh.Grade = c.QueryParam("grade")
@@ -34,126 +36,128 @@ type QueryHelper struct {
 
 	Dictionary         string
 	DictionaryCategory string
+
+	MaxSentencesInJoin int
 }
 
-func (q *QueryHelper) String() string {
+func (qh *QueryHelper) String() string {
 	var o string
 
-	if q.JLPT != "" {
-		o += fmt.Sprintf("jlpt-%s", q.JLPT)
+	if qh.JLPT != "" {
+		o += fmt.Sprintf("jlpt-%s", qh.JLPT)
 	}
 
-	if q.Frequency != "" {
-		o += fmt.Sprintf("frequency-%s", q.Frequency)
+	if qh.Frequency != "" {
+		o += fmt.Sprintf("frequency-%s", qh.Frequency)
 	}
 
-	if q.Grade != "" {
-		o += fmt.Sprintf("grade-%s", q.Grade)
+	if qh.Grade != "" {
+		o += fmt.Sprintf("grade-%s", qh.Grade)
 	}
 
-	if q.StrokeCount != "" {
-		o += fmt.Sprintf("strokes-%s", q.StrokeCount)
+	if qh.StrokeCount != "" {
+		o += fmt.Sprintf("strokes-%s", qh.StrokeCount)
 	}
 
-	if q.Dictionary != "" {
-		o += fmt.Sprintf("dictionary-%s", q.Dictionary)
+	if qh.Dictionary != "" {
+		o += fmt.Sprintf("dictionary-%s", qh.Dictionary)
 	}
 
-	if q.DictionaryCategory != "" {
-		o += fmt.Sprintf("dictionary_category-%s", q.DictionaryCategory)
+	if qh.DictionaryCategory != "" {
+		o += fmt.Sprintf("dictionary_category-%s", qh.DictionaryCategory)
 	}
 
 	return o
 }
 
-func (q *QueryHelper) StringFull() string {
+func (qh *QueryHelper) StringFull() string {
 	return fmt.Sprintf(
 		"JLPT: %v; Frequency: %v; Grade: %v; StrokeCount: %v; Dictionary: %v; Dictionary Category: %v",
-		utils.StringOrDash(q.JLPT),
-		utils.StringOrDash(q.Frequency),
-		utils.StringOrDash(q.Grade),
-		utils.StringOrDash(q.StrokeCount),
-		utils.StringOrDash(q.Dictionary),
-		utils.StringOrDash(q.DictionaryCategory),
+		utils.StringOrDash(qh.JLPT),
+		utils.StringOrDash(qh.Frequency),
+		utils.StringOrDash(qh.Grade),
+		utils.StringOrDash(qh.StrokeCount),
+		utils.StringOrDash(qh.Dictionary),
+		utils.StringOrDash(qh.DictionaryCategory),
 	)
 }
 
-func (q *QueryHelper) getSQLCondition() string {
+func (qh *QueryHelper) getSQLCondition() string {
 	var tableName string
-	if q.IsKanji() {
+	if qh.IsKanji() {
 		tableName = "k" + "."
 	} else {
 		tableName = "dme" + "."
 	}
 
-	if q.JLPT != "" {
-		if q.JLPT == "0" {
+	if qh.JLPT != "" {
+		if qh.JLPT == "0" {
 			return fmt.Sprintf("%sjlpt IS NOT NULL", tableName)
 		}
 
-		return fmt.Sprintf("%sjlpt = %v ", tableName, q.JLPT)
+		return fmt.Sprintf("%sjlpt = %v ", tableName, qh.JLPT)
 	}
 
-	if q.Frequency != "" {
-		if q.Frequency == "0" {
+	if qh.Frequency != "" {
+		if qh.Frequency == "0" {
 			return fmt.Sprintf("%sfreq IS NOT NULL", tableName)
 		}
 
-		return fmt.Sprintf("%sfreq = %v ", tableName, q.Frequency)
+		return fmt.Sprintf("%sfreq = %v ", tableName, qh.Frequency)
 	}
 
-	if q.Grade != "" {
-		if q.Grade == "0" {
+	if qh.Grade != "" {
+		if qh.Grade == "0" {
 			return fmt.Sprintf("%sgrade IS NOT NULL", tableName)
 		}
 
-		return fmt.Sprintf("%sgrade = %v ", tableName, q.Grade)
+		return fmt.Sprintf("%sgrade = %v ", tableName, qh.Grade)
 	}
 
-	if q.StrokeCount != "" {
-		if q.StrokeCount == "0" {
+	if qh.StrokeCount != "" {
+		if qh.StrokeCount == "0" {
 			return fmt.Sprintf("%sstroke_count IS NOT NULL", tableName)
 		}
 
-		return fmt.Sprintf("%sstroke_count = %v ", tableName, q.StrokeCount)
+		return fmt.Sprintf("%sstroke_count = %v ", tableName, qh.StrokeCount)
 	}
 
-	if q.DictionaryCategory != "" {
-		return fmt.Sprintf("%sdc_id = %v ", tableName, q.DictionaryCategory)
+	if qh.DictionaryCategory != "" {
+		return fmt.Sprintf("%sdc_id = %v ", tableName, qh.DictionaryCategory)
 	}
 
-	return fmt.Sprintf("%sd_id = %v ", tableName, q.Dictionary)
+	return fmt.Sprintf("%sd_id = %v ", tableName, qh.Dictionary)
 }
 
-func (q *QueryHelper) IsKanji() bool {
-	if q.Dictionary != "" || q.DictionaryCategory != "" {
+func (qh *QueryHelper) IsKanji() bool {
+	if qh.Dictionary != "" || qh.DictionaryCategory != "" {
 		return false
 	}
 	return true
 }
 
-func (q *QueryHelper) IsEmpty() bool {
-	if q.JLPT == "" &&
-		q.Frequency == "" &&
-		q.Grade == "" &&
-		q.StrokeCount == "" &&
-		q.Dictionary == "" &&
-		q.DictionaryCategory == "" {
+func (qh *QueryHelper) IsEmpty() bool {
+	if qh.JLPT == "" &&
+		qh.Frequency == "" &&
+		qh.Grade == "" &&
+		qh.StrokeCount == "" &&
+		qh.Dictionary == "" &&
+		qh.DictionaryCategory == "" {
 		return true
 	}
 	return false
 }
 
-func (q *QueryHelper) CreateQuery() string {
-	if q.IsKanji() {
-		return fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from kanjis k JOIN readings__mtm__kanjis rmk ON rmk.k_id = k.id INNER JOIN LATERAL (SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE rmk.r_id = smr.r_id LIMIT 15) smr ON rmk.r_id = smr.r_id WHERE %s ORDER BY smr.r_id, smr.s_id", q.getSQLCondition())
+func (qh *QueryHelper) CreateQuery() string {
+	if qh.IsKanji() {
+		return fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from kanjis k JOIN readings__mtm__kanjis rmk ON rmk.k_id = k.id INNER JOIN LATERAL (SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE rmk.r_id = smr.r_id ORDER BY smr.r_id, smr.s_id LIMIT %v ) smr ON rmk.r_id = smr.r_id WHERE %s ORDER BY smr.r_id, smr.s_id", qh.MaxSentencesInJoin, qh.getSQLCondition())
 	}
 
-	return fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from readings r JOIN dictionaries__mtm__entries dme ON r.entry = dme.entry INNER JOIN LATERAL ( SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE r.id = smr.r_id LIMIT 15 ) smr ON r.id = smr.r_id WHERE %s ORDER BY smr.r_id, smr.s_id", q.getSQLCondition())
+	return fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from readings r JOIN dictionaries__mtm__entries dme ON r.entry = dme.entry INNER JOIN LATERAL ( SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE r.id = smr.r_id ORDER BY smr.r_id, smr.s_id LIMIT %v ) smr ON r.id = smr.r_id WHERE %s ORDER BY smr.r_id, smr.s_id", qh.MaxSentencesInJoin, qh.getSQLCondition())
 }
 
-func (q *QueryHelper) GetPreallocSize() int {
-	if q.IsKanji() {
+func (qh *QueryHelper) GetPreallocSize() int {
+	if qh.IsKanji() {
 		return 3000
 	}
 

@@ -36,6 +36,7 @@ services:
     environment:
       - MHS_THREADS=${MHS_THREADS}
       - MHS_MAX_SLICE_SIZE=${MHS_MAX_SLICE_SIZE}
+      - MHS_MAX_SENTENCES_PER_VALUE=${MHS_MAX_SENTENCES_PER_VALUE}
 
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -62,7 +63,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 12G
+          memory: 20G
 
 volumes:
   shared:

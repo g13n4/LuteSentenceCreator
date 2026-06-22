@@ -2,7 +2,9 @@ package utils
 
 import (
 	"fmt"
-	"strings"
+	"log"
+	"os"
+	"strconv"
 )
 
 const Null = "NULL"
@@ -12,15 +14,6 @@ type PostgresID int
 
 type Stringer interface {
 	String() string
-}
-
-func FormatStringFromArray(title string, list []string) string {
-	var output string
-	if len(list) != 0 {
-		output = strings.Join(list, "; ")
-		output = fmt.Sprintf("%s: %s\n", title, output)
-	}
-	return output
 }
 
 func FormatIntNullIfNil(v *int) string {
@@ -35,13 +28,6 @@ func GetUTFValue(v string) int {
 	return int(val[0])
 }
 
-func PIntegerToSafeString(v *int) string {
-	if v == nil {
-		return "-"
-	}
-	return fmt.Sprintf("%v", *v)
-}
-
 func IntegerToSafeString(v int) string {
 	return fmt.Sprintf("%v", v)
 }
@@ -51,4 +37,19 @@ func StringOrDash(s string) string {
 		return "-"
 	}
 	return s
+}
+
+func GetEnvIntValue(key string, defValue int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Printf("%s environment variable is not set. Using default", key)
+	} else {
+		val, err := strconv.Atoi(value)
+		if err != nil {
+			log.Printf("%s environment variable is not correct. Using default", key)
+		} else {
+			defValue = val
+		}
+	}
+	return defValue
 }

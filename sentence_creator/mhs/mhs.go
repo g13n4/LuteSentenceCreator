@@ -23,6 +23,9 @@ type Executor struct {
 	maxInputLinesCount int
 	maxEdgesCount      int
 	maxPermutations    int
+
+	ignoreErrors   bool
+	errorThreshold float32
 }
 
 type SentenceReadingRow struct {
@@ -30,29 +33,39 @@ type SentenceReadingRow struct {
 	ReadingId  int64
 }
 
-func NewExecutor(db repository.DBSaver) *Executor {
-	var inputLines int = 64
-	maxSize := os.Getenv("MHS_MAX_SLICE_SIZE")
-	if maxSize == "" {
-		log.Print("MHS_MAX_SLICE_SIZE environment variable is not set. Using default")
+func NewExecutor(db repository.DBSaver, maxSlice ...int) *Executor {
+	var inputLines int
+	if len(maxSlice) != 0 {
+		inputLines = maxSlice[0]
 	} else {
-		val, err := strconv.Atoi(maxSize)
-		if err != nil {
-			log.Print("MHS_MAX_SLICE_SIZE environment variable is not correct. Using default")
-		} else {
-			inputLines = val
-		}
+		inputLines = utils.GetEnvIntValue("MHS_MAX_SLICE_SIZE", 700)
 	}
 
-	return &Executor{db: db, maxInputLinesCount: inputLines, maxEdgesCount: inputLines * 2, maxPermutations: 1}
+	return &Executor{
+		db:                 db,
+		maxInputLinesCount: inputLines,
+		maxEdgesCount:      inputLines * 2,
+		maxPermutations:    1,
+		ignoreErrors:       true,
+		errorThreshold:     0.,
+	}
 }
 
 func (exc *Executor) GetSentences(ctx context.Context, outputFile *os.File, mshq QueryHelper, limit int) error {
 	var wg sync.WaitGroup
 
-	outputSentenceIdChan := make(chan *string)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	err := exc.processSentencesIdRows(ctx, mshq.CreateQuery(), mshq.GetPreallocSize(), outputSentenceIdChan, &wg)
+	outputSentenceIdChan := make(chan *string)
+	processingErrors := make(chan error, 128)
+
+	rowsChan, err := exc.getIDs(ctx, mshq.CreateQuery())
+	if err != nil {
+		return err
+	}
+
+	err = exc.processSentencesIdRows(ctx, &wg, mshq.GetPreallocSize(), rowsChan, outputSentenceIdChan, processingErrors)
 	if err != nil {
 		return err
 	}
@@ -62,7 +75,43 @@ func (exc *Executor) GetSentences(ctx context.Context, outputFile *os.File, mshq
 		close(outputSentenceIdChan)
 	}()
 
-	return exc.saveSentencesSet(ctx, outputFile, outputSentenceIdChan, limit)
+	var errCounter, elementCounter int
+	sentenceSet := make(map[string]struct{})
+
+outerLoop:
+	for {
+		select {
+		case err := <-processingErrors:
+			if err != nil {
+				if !exc.ignoreErrors {
+					cancel()
+					return err
+				}
+				errCounter++
+			}
+			elementCounter++
+		case sentenceId, ok := <-outputSentenceIdChan:
+			if !ok {
+				break outerLoop
+			}
+
+			_, ok = sentenceSet[*sentenceId]
+			if ok {
+				continue
+			}
+
+			sentenceSet[*sentenceId] = struct{}{}
+		}
+	}
+
+	if elementCounter != 0 && errCounter != 0 && exc.errorThreshold != 0. {
+		errPercent := float32(errCounter) / float32(elementCounter)
+		if errPercent > exc.errorThreshold {
+			return errors.New(fmt.Sprintf("too many errors in during processing: expected %v and got %v (%v errors out of %v goroutines)", exc.errorThreshold, errPercent, errCounter, elementCounter))
+		}
+	}
+
+	return exc.saveSentencesSet(ctx, outputFile, &sentenceSet, limit)
 }
 
 func (exc *Executor) getIDs(ctx context.Context, sqlQuery string) (chan SentenceReadingRow, error) {
@@ -71,21 +120,27 @@ func (exc *Executor) getIDs(ctx context.Context, sqlQuery string) (chan Sentence
 		return nil, err
 	}
 
-	output := make(chan SentenceReadingRow)
+	output := make(chan SentenceReadingRow, 100)
 
 	go func() {
+		defer close(output)
 		defer rows.Close()
 
 		var readingId int64
 		var sentenceId int64
+		var found bool
 
 		for rows.Next() {
+			found = true
+
 			err := rows.Scan(&readingId, &sentenceId)
 			if err != nil {
 				panic(err)
 			}
-
 			output <- SentenceReadingRow{SentenceId: sentenceId, ReadingId: readingId}
+		}
+		if !found {
+			panic("no rows found")
 		}
 	}()
 
@@ -94,23 +149,22 @@ func (exc *Executor) getIDs(ctx context.Context, sqlQuery string) (chan Sentence
 
 func (exc *Executor) processSentencesIdRows(
 	ctx context.Context,
-	sqlQuery string,
-	preallocSize int,
-	outputSentenceIdChan chan<- *string,
 	wg *sync.WaitGroup,
+	preallocSize int,
+	queryChan <-chan SentenceReadingRow,
+	outputSentenceIdChan chan<- *string,
+	errorsChan chan<- error,
 ) error {
-	rowsChan, err := exc.getIDs(ctx, sqlQuery)
-	if err != nil {
-		return err
-	}
 
 	rToS := make(map[int64]*[]int64, preallocSize)
 
 	var mu sync.Mutex
 
+	var workerId int
+
 	var prevReadingId int64
-	var curRowCounter int
-	var totalRowCounter int
+	var elementCounter int
+	var totalElementCounter int
 
 	var canBeSliced bool
 
@@ -118,8 +172,22 @@ func (exc *Executor) processSentencesIdRows(
 	var firstElementId int64
 	var firstElementList = make([]int64, 0)
 
-	for srr := range rowsChan {
-		curRowCounter++
+	parallelepiped := func(sentenceMap map[int64]*[]int64, w int, lastProcess bool) {
+		defer wg.Done()
+		if lastProcess {
+			log.Printf("[worker %v] Sent last %v lines to MHS. Total elements send - %v", w, len(sentenceMap), totalElementCounter)
+		} else {
+			log.Printf("[worker %v] Sent %v lines to MHS. Total elements send - %v", w, len(sentenceMap), totalElementCounter)
+		}
+		err := exc.processMapInput(ctx, &sentenceMap, outputSentenceIdChan, &mu, w)
+
+		if err != nil {
+			errorsChan <- errors.New(fmt.Sprintf("[worker %v] error: \n%+v", w, err))
+		}
+	}
+
+	for srr := range queryChan {
+		elementCounter++
 		canBeSliced = prevReadingId != srr.ReadingId
 
 		if srr.ReadingId == firstElementId {
@@ -133,60 +201,66 @@ func (exc *Executor) processSentencesIdRows(
 			rToS[srr.ReadingId] = &[]int64{srr.SentenceId}
 		}
 
-		if canBeSliced && curRowCounter >= exc.maxInputLinesCount {
-			totalRowCounter += curRowCounter
-			log.Printf("Sent %v to process in MHS. Total rows send - %v", curRowCounter, totalRowCounter)
-			wg.Go(func() {
-				err := exc.processMapInput(rToS, outputSentenceIdChan, &mu)
-				if err != nil {
-					panic(err)
-				}
-			})
+		if canBeSliced && len(rToS) >= exc.maxInputLinesCount {
+			totalElementCounter += elementCounter
+			workerId++
+
+			wg.Add(1)
+			go parallelepiped(rToS, workerId, false)
 
 			rToS = make(map[int64]*[]int64, preallocSize)
-			curRowCounter = 0
+			elementCounter = 0
 		}
 
 		prevReadingId = srr.ReadingId
 	}
 
 	if len(rToS) != 0 {
-		if len(rToS) == 1 {
-			_, ok := rToS[firstElementId]
-			if !ok {
-				rToS[firstElementId] = &firstElementList
-			}
+		_, ok := rToS[firstElementId]
+		if !ok {
+			rToS[firstElementId] = &firstElementList
 		}
 
-		totalRowCounter += curRowCounter
-		log.Printf("Sent %v to process in MHS. Total rows send - %v", curRowCounter, totalRowCounter)
-		wg.Go(func() {
-			err := exc.processMapInput(rToS, outputSentenceIdChan, &mu)
-			if err != nil {
-				panic(err)
-			}
-		})
+		totalElementCounter += elementCounter
+
+		wg.Add(1)
+		go parallelepiped(rToS, workerId+1, true)
 	}
+
 	return nil
 }
 
 func (exc *Executor) processMapInput(
-	sentenceMap map[int64]*[]int64,
+	ctx context.Context,
+	sentenceMap *map[int64]*[]int64,
 	outputSentenceIdChan chan<- *string,
 	mu *sync.Mutex,
+	t int,
 ) error {
 	fileNameIn := exc.getTemporaryFilePath("input")
 	err := exc.createMHSFileInput(fileNameIn, sentenceMap)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = os.Remove(fileNameIn)
+	}()
 
 	mu.Lock()
 	defer mu.Unlock()
 
-	fileNameOut := exc.getTemporaryFilePath("output")
-	err = exc.processSentenceSetFile(fileNameIn, fileNameOut, outputSentenceIdChan)
-	return err
+	select {
+	case <-ctx.Done():
+		return nil
+	default:
+		fileNameOut := exc.getTemporaryFilePath("output")
+		defer func() {
+			_ = os.Remove(fileNameOut)
+		}()
+
+		err = exc.processSentenceSetFile(fileNameIn, fileNameOut, outputSentenceIdChan, t)
+		return err
+	}
 }
 
 func (exc *Executor) getTemporaryFilePath(prefix string) string {
@@ -197,7 +271,7 @@ func (exc *Executor) getTemporaryFilePath(prefix string) string {
 	return tempFilePath
 }
 
-func (exc *Executor) createMHSFileInput(mhsInput string, sentenceMap map[int64]*[]int64) error {
+func (exc *Executor) createMHSFileInput(mhsInput string, sentenceMap *map[int64]*[]int64) error {
 	file, err := os.Create(mhsInput)
 	defer func() {
 		err := file.Close()
@@ -210,11 +284,13 @@ func (exc *Executor) createMHSFileInput(mhsInput string, sentenceMap map[int64]*
 		return err
 	}
 
-	writer := bufio.NewWriterSize(file, 2*1024)
+	bufferSize := 1024
 
-	bufferedLine := make([]byte, 0, 2*1024)
+	writer := bufio.NewWriterSize(file, bufferSize)
 
-	for _, line := range sentenceMap {
+	bufferedLine := make([]byte, 0, bufferSize)
+
+	for _, line := range *sentenceMap {
 		bufferedLine = bufferedLine[:0]
 		for _, num := range *line {
 			bufferedLine = strconv.AppendInt(bufferedLine, num, 10)
@@ -241,13 +317,14 @@ func (exc *Executor) processSentenceSetFile(
 	inFileName string,
 	outFileName string,
 	outputSentenceIdChan chan<- *string,
+	t int,
 ) error {
 	mhsThreadsCount := os.Getenv("MHS_THREADS")
 	if mhsThreadsCount == "" {
 		mhsThreadsCount = "1"
 	}
 
-	log.Printf("Started MHS processing")
+	log.Printf("[worker %v] Started MHS processing", t)
 	cmd := exec.Command(
 		"/mhs/agdmhs",
 		fmt.Sprintf("--input=%s", inFileName),
@@ -261,17 +338,19 @@ func (exc *Executor) processSentenceSetFile(
 	cmdOutput, err := cmd.CombinedOutput()
 	if err != nil {
 		return errors.New(
-			fmt.Sprintf("Command failed:\nfile input:%s\nfile output:%s\n%s\nOutput: %s",
+			fmt.Sprintf("[worker %v] Command failed:\nfile input:%s\nfile output:%s\n%s\nOutput: %s",
+				t,
 				inFileName,
 				outFileName,
 				err,
 				cmdOutput,
 			))
 	}
+	fmt.Printf("%s", cmdOutput)
 
 	file, closer, err := utils.OpenFile(outFileName)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error opening output file: %s", err))
+		return errors.New(fmt.Sprintf("[worker %v] Error opening output file: %s", t, err))
 	}
 
 	defer func() {
@@ -280,16 +359,6 @@ func (exc *Executor) processSentenceSetFile(
 			panic(err)
 		}
 
-		// TODO: uncomment
-		//err = os.Remove(inFileName)
-		//if err != nil {
-		//	panic(err)
-		//}
-		//
-		//err = os.Remove(outFileName)
-		//if err != nil {
-		//	panic(err)
-		//}
 	}()
 
 	fScanner := bufio.NewScanner(file)
@@ -311,23 +380,21 @@ func (exc *Executor) processSentenceSetFile(
 		}
 	}
 
-	log.Printf("Extracted %v sentences from MHS", sentenceCount)
+	log.Printf("[worker %v] Extracted %v sentences from MHS", t, sentenceCount)
 
 	return nil
 }
 
-func (exc *Executor) saveSentencesSet(ctx context.Context, outputFile *os.File, sentenceIdChan <-chan *string, limit int) error {
+func (exc *Executor) saveSentencesSet(
+	ctx context.Context,
+	outputFile *os.File,
+	sentenceSet *map[string]struct{},
+	limit int,
+) error {
 	ids := make([]string, 0, 1000)
 
-	sentenceSet := make(map[string]struct{})
-	for sentenceId := range sentenceIdChan {
-		_, ok := sentenceSet[*sentenceId]
-		if ok {
-			continue
-		}
-
-		ids = append(ids, *sentenceId)
-		sentenceSet[*sentenceId] = struct{}{}
+	for sentenceId := range *sentenceSet {
+		ids = append(ids, sentenceId)
 	}
 
 	var sqlLimit string
@@ -358,4 +425,9 @@ func (exc *Executor) saveSentencesSet(ctx context.Context, outputFile *os.File, 
 	err = writer.Flush()
 
 	return err
+}
+
+func (exc *Executor) SetErrorBehavior(ignoreErrors bool, errorThreshold float32) {
+	exc.ignoreErrors = ignoreErrors
+	exc.errorThreshold = errorThreshold
 }

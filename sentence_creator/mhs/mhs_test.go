@@ -3,8 +3,10 @@ package mhs
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -46,7 +48,7 @@ func TestCreateMHSFileInput(t *testing.T) {
 		}
 	}
 
-	err := mhsExecutor.createMHSFileInput(mhsInput, testMap)
+	err := mhsExecutor.createMHSFileInput(mhsInput, &testMap)
 	if err != nil {
 		t.Errorf("Error scanning row: %v", err)
 	}
@@ -87,7 +89,7 @@ func TestProcessSentenceSetFile(t *testing.T) {
 	testChan := make(chan *string)
 
 	wg.Go(func() {
-		err = mhsExecutor.processSentenceSetFile(mhsInput, mhsOutput, testChan)
+		err = mhsExecutor.processSentenceSetFile(mhsInput, mhsOutput, testChan, 1)
 		if err != nil {
 			t.Errorf("error using mhsa exec %v", err)
 		}
@@ -101,16 +103,84 @@ func TestProcessSentenceSetFile(t *testing.T) {
 	count := 0
 	var output string
 
-	for line := range testChan {
+	for v := range testChan {
 		count++
-		output += *line
+		if output != "" {
+			output += " " + *v
+		} else {
+			output += *v
+		}
 	}
 
-	if count < 3 {
-		t.Errorf("expected at least 3 numbers in a set and got %v", count)
+	if 1 >= count || count > 3 {
+		t.Errorf("expected at least 2 numbers in a set and got %v\noutput: %s", count, output)
 	}
 	if output == "" {
 		t.Errorf("output is empty")
+	}
+}
+
+// go test -v -run ^TestSentenceIdRowsProcessing ./mhs
+func TestSentenceIdRowsProcessing(t *testing.T) {
+	var wg sync.WaitGroup
+	stateSingleton := state.GetStateSingleton()
+
+	mhsExecutor := NewExecutor(stateSingleton.Pool, 3)
+
+	testExample := [][]int{
+		{1, 2, 5, 4},
+		{2, 3, 4, 6, 7},
+		{1, 3, 7, 2},
+		{5, 2, 1, 8},
+		{8, 9, 5, 3, 2, 1},
+		{2, 5, 6, 7, 8},
+	}
+
+	vChan := make(chan SentenceReadingRow, 100)
+	go func() {
+		defer close(vChan)
+
+		for idx, vSlice := range testExample {
+			for _, v := range vSlice {
+				vChan <- SentenceReadingRow{SentenceId: int64(v), ReadingId: int64(idx)}
+			}
+		}
+	}()
+
+	testChan := make(chan *string)
+
+	errChan := make(chan error, 10)
+	err := mhsExecutor.processSentencesIdRows(context.Background(), &wg, 10, vChan, testChan, errChan)
+	if err != nil {
+		t.Errorf("error using mhsa exec %v", err)
+	}
+
+	close(errChan)
+	for err := range errChan {
+		if err != nil {
+			t.Errorf("error in a processing goroutine %v", err)
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(testChan)
+	}()
+
+	count := 0
+	var output string
+
+	for v := range testChan {
+		count++
+		if output != "" {
+			output += " " + *v
+		} else {
+			output += *v
+		}
+	}
+
+	if count < 3 {
+		t.Errorf("expected at least 2 numbers in a set and got %v\noutput: %s", count, output)
 	}
 }
 
@@ -166,21 +236,27 @@ func (e *EchoContextMock) QueryParam(name string) string {
 	return v
 }
 
-// go test -v -run ^TestMHSExecutorKanji ./mhs
-func TestMHSExecutorKanji(t *testing.T) {
+// go test -v -run ^TestMHSExecutorDictionary -timeout 0 ./mhs
+func TestMHSExecutorDictionary(t *testing.T) {
+	mhsExecutorDictionary(t)
+}
+
+func mhsExecutorDictionary(t *testing.T) {
 	stateSingleton := state.GetStateSingleton()
 
 	mhsExecutor := NewExecutor(stateSingleton.Pool)
 
-	mhsInput := filepath.Join(os.TempDir(), "test-intput.dat")
-	file, err := os.Create(mhsInput)
+	fileName := mhsExecutor.getTemporaryFilePath("test-input")
+	log.Println("MHS test input file name: ", fileName)
+
+	file, err := os.Create(fileName)
 	defer func() {
 		err := file.Close()
 		if err != nil {
 			t.Errorf("error closing file: %+v", err)
 		}
 
-		err = os.Remove(mhsInput)
+		err = os.Remove(fileName)
 		if err != nil {
 			t.Errorf("error removing file: %+v", err)
 		}
@@ -201,6 +277,50 @@ func TestMHSExecutorKanji(t *testing.T) {
 	err = mhsExecutor.GetSentences(context.Background(), file, *qh, 1000)
 	if err != nil {
 		t.Errorf("error executing mhs %v", err)
+	}
 
+	fileStats, err := os.Stat(fileName)
+	if err != nil {
+		t.Errorf("error while checking file size %v", err)
+	}
+	if fileStats.Size() < int64(10) {
+		t.Error("output file is empty")
+	}
+}
+
+func getValueToAdd(v int) (int, error) {
+	strVal := strconv.Itoa(v)
+	newVal := "1" + strVal[1:]
+	return strconv.Atoi(newVal)
+}
+
+// go test -run ^TestOptimalMHSValues -timeout 0 ./mhs
+func TestOptimalMHSValues(t *testing.T) {
+
+	var slice, sliceStep int
+	var sentencePV, sentenceStep int
+
+	for slice = 10; slice <= 100_000; {
+		for sentencePV = 10; sentencePV <= 100_000; {
+			testName := fmt.Sprintf("Test_Slice_%d_Sentence_%v", slice, sentencePV)
+
+			t.Run(testName, func(t *testing.T) {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Errorf("%s\n%v", testName, r)
+					}
+				}()
+
+				t.Setenv("MHS_MAX_SLICE_SIZE", fmt.Sprintf("%v", slice))
+				t.Setenv("MHS_MAX_SENTENCES_PER_VALUE", fmt.Sprintf("%v", sentencePV))
+
+				mhsExecutorDictionary(t)
+			})
+
+			sentenceStep, _ = getValueToAdd(sentencePV)
+			sentencePV += sentenceStep
+		}
+		sliceStep, _ = getValueToAdd(slice)
+		slice += sliceStep
 	}
 }

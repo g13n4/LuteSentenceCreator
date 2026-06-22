@@ -35,7 +35,7 @@ func GetStateSingleton() *Singleton {
 		os.Getenv("POSTGRES_USER"),
 		os.Getenv("POSTGRES_PASSWORD"),
 		os.Getenv("POSTGRES_ADDRESS"),
-		os.Getenv("POSTGRES_PORT"),
+		"5432",
 		os.Getenv("POSTGRES_DB"),
 	)
 

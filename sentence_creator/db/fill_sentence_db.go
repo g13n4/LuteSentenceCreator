@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"log"
 
 	conns "github.com/g13n4/LuteSentencePicker/sentence_creator/connections"
 	parser2 "github.com/g13n4/LuteSentencePicker/sentence_creator/parser"
@@ -54,7 +53,6 @@ func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) e
 	uniqueReadings := make(map[int]struct{})
 	for s := range tsChan {
 		for _, t := range *s.Tokens {
-			log.Println(t)
 			readingIds, ok := ss.EntryPool[t]
 			if ok {
 				for _, rId := range readingIds {
@@ -64,14 +62,13 @@ func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) e
 
 		}
 
-		for rId, _ := range uniqueReadings {
+		for rId := range uniqueReadings {
 			srSaver.Add(
 				&conns.SentenceReading{
 					SentenceId: s.Id,
 					ReadingId:  rId,
 				},
 			)
-			log.Println(s.Id, rId)
 		}
 		clear(uniqueReadings)
 	}
