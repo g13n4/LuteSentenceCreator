@@ -6,8 +6,9 @@ import (
 )
 
 type Sentence struct {
-	Id   int
-	Text string
+	Id         int
+	Text       string
+	isFiltered bool
 }
 
 func (s *Sentence) String() string {

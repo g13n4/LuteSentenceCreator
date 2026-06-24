@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS readings
 CREATE TABLE IF NOT EXISTS sentences
 (
     id             INT PRIMARY KEY,
-    sentence        TEXT
+    sentence        TEXT,
+    isFiltered BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE IF NOT EXISTS dictionaries__mtm__entries

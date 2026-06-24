@@ -51,9 +51,10 @@ func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) e
 	srSaver := utils.NewBulkSaveHelper[*conns.SentenceReading](sentenceReadingRepo, ss.BatchSize)
 
 	uniqueSentenceFilter := utils.NewSentenceFilter()
-	uniqueReadingsList := make([]*int, 0, 1_000)
+	uniqueReadingsList := make([]*int, 0, 1000)
 
 	uniqueReadings := make(map[int]struct{})
+
 	for s := range tsChan {
 		for _, t := range *s.Tokens {
 			readingIds, ok := ss.EntryPool[t]
@@ -62,16 +63,13 @@ func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) e
 					uniqueReadings[rId] = struct{}{}
 				}
 			}
-
 		}
 
-		counter := 0
 		for rId := range uniqueReadings {
-			uniqueReadingsList[counter] = &rId
-			counter++
+			uniqueReadingsList = append(uniqueReadingsList, &rId)
 		}
 
-		if uniqueSentenceFilter.Fits(&uniqueReadingsList) {
+		if uniqueSentenceFilter.Fits(s.Id, &uniqueReadingsList) {
 			for rId := range uniqueReadings {
 				srSaver.Add(
 					&conns.SentenceReading{
@@ -82,11 +80,20 @@ func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) e
 			}
 		}
 
+		uniqueReadingsList = uniqueReadingsList[:0]
 		clear(uniqueReadings)
-		clear(uniqueReadingsList)
 	}
 
 	err = srSaver.SaveInBatches()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(
+		ctx,
+		"UPDATE sentences SET isFiltered = FALSE WHERE id = ANY($1)",
+		*uniqueSentenceFilter.GetFitSentenceId(),
+	)
 	if err != nil {
 		return err
 	}
