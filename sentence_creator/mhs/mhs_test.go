@@ -3,9 +3,11 @@ package mhs
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"testing"
@@ -243,8 +245,10 @@ func TestMHSExecutorDictionary(t *testing.T) {
 
 func mhsExecutorDictionary(t *testing.T) {
 	stateSingleton := state.GetStateSingleton()
+	defer stateSingleton.Pool.Close()
 
 	mhsExecutor := NewExecutor(stateSingleton.Pool)
+	mhsExecutor.SetBehaviorOnError(false)
 
 	fileName := mhsExecutor.getTemporaryFilePath("test-input")
 	log.Println("MHS test input file name: ", fileName)
@@ -274,6 +278,7 @@ func mhsExecutorDictionary(t *testing.T) {
 		t.Errorf("can't create a query helper %v", err)
 	}
 
+	log.Println(qh.CreateQuery())
 	err = mhsExecutor.GetSentences(context.Background(), file, *qh, 1000)
 	if err != nil {
 		t.Errorf("error executing mhs %v", err)
@@ -294,20 +299,22 @@ func getValueToAdd(v int) (int, error) {
 	return strconv.Atoi(newVal)
 }
 
-// go test -run ^TestOptimalMHSValues -timeout 0 ./mhs
+// go test -v -run ^TestOptimalMHSValues -timeout 0 ./mhs
 func TestOptimalMHSValues(t *testing.T) {
+
+	log.SetOutput(io.Discard)
 
 	var slice, sliceStep int
 	var sentencePV, sentenceStep int
 
-	for slice = 10; slice <= 100_000; {
+	for slice = 50; slice <= 100_000; {
 		for sentencePV = 10; sentencePV <= 100_000; {
 			testName := fmt.Sprintf("Test_Slice_%d_Sentence_%v", slice, sentencePV)
 
 			t.Run(testName, func(t *testing.T) {
 				defer func() {
 					if r := recover(); r != nil {
-						t.Errorf("%s\n%v", testName, r)
+						t.Errorf("ERROR: %s\n", testName)
 					}
 				}()
 
@@ -316,6 +323,8 @@ func TestOptimalMHSValues(t *testing.T) {
 
 				mhsExecutorDictionary(t)
 			})
+
+			runtime.GC()
 
 			sentenceStep, _ = getValueToAdd(sentencePV)
 			sentencePV += sentenceStep

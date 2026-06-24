@@ -427,7 +427,10 @@ func (exc *Executor) saveSentencesSet(
 	return err
 }
 
-func (exc *Executor) SetErrorBehavior(ignoreErrors bool, errorThreshold float32) {
+func (exc *Executor) SetBehaviorOnError(ignoreErrors bool) {
 	exc.ignoreErrors = ignoreErrors
+}
+
+func (exc *Executor) SetErrorThreshold(errorThreshold float32) {
 	exc.errorThreshold = errorThreshold
 }

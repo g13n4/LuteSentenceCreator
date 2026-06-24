@@ -63,7 +63,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 20G
+          memory: 10G
 
 volumes:
   shared:
