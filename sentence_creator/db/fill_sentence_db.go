@@ -6,11 +6,11 @@ import (
 	"io"
 
 	conns "github.com/g13n4/LuteSentencePicker/sentence_creator/connections"
-	parser2 "github.com/g13n4/LuteSentencePicker/sentence_creator/parser"
-	repository2 "github.com/g13n4/LuteSentencePicker/sentence_creator/repository"
+	"github.com/g13n4/LuteSentencePicker/sentence_creator/parser"
+	"github.com/g13n4/LuteSentencePicker/sentence_creator/repository"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/state"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/tatoeba"
-	utils2 "github.com/g13n4/LuteSentencePicker/sentence_creator/utils"
+	"github.com/g13n4/LuteSentencePicker/sentence_creator/utils"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -28,10 +28,10 @@ func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) e
 		return err
 	}
 
-	sentenceRepo := repository2.NewSentenceRepository(tx)
+	sentenceRepo := repository.NewSentenceRepository(tx)
 
-	sChan := parser2.CreateTSVParsingChan(sentencesR, ss.BatchSize)
-	kSaver := utils2.NewBatchSaveHelper[*tatoeba.Sentence](sentenceRepo, ss.BatchSize)
+	sChan := parser.CreateTSVParsingChan(sentencesR, ss.BatchSize)
+	kSaver := utils.NewBatchSaveHelper[*tatoeba.Sentence](sentenceRepo, ss.BatchSize)
 
 	for s := range sChan {
 		err = kSaver.Add(s)
@@ -45,10 +45,13 @@ func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) e
 		return err
 	}
 
-	sentenceReadingRepo := repository2.NewSentenceReadingConnectionsRepository(tx)
+	sentenceReadingRepo := repository.NewSentenceReadingConnectionsRepository(tx)
 
-	tsChan := parser2.CreateSudachiTSVParsingChan(parsedSentencedR, ss.BatchSize)
-	srSaver := utils2.NewBulkSaveHelper[*conns.SentenceReading](sentenceReadingRepo, ss.BatchSize)
+	tsChan := parser.CreateSudachiTSVParsingChan(parsedSentencedR, ss.BatchSize)
+	srSaver := utils.NewBulkSaveHelper[*conns.SentenceReading](sentenceReadingRepo, ss.BatchSize)
+
+	uniqueSentenceFilter := utils.NewSentenceFilter()
+	uniqueReadingsList := make([]*int, 0, 1_000)
 
 	uniqueReadings := make(map[int]struct{})
 	for s := range tsChan {
@@ -62,15 +65,25 @@ func FillSentence(ss *state.Singleton, sentencesR, parsedSentencedR io.Reader) e
 
 		}
 
+		counter := 0
 		for rId := range uniqueReadings {
-			srSaver.Add(
-				&conns.SentenceReading{
-					SentenceId: s.Id,
-					ReadingId:  rId,
-				},
-			)
+			uniqueReadingsList[counter] = &rId
+			counter++
 		}
+
+		if uniqueSentenceFilter.Fits(&uniqueReadingsList) {
+			for rId := range uniqueReadings {
+				srSaver.Add(
+					&conns.SentenceReading{
+						SentenceId: s.Id,
+						ReadingId:  rId,
+					},
+				)
+			}
+		}
+
 		clear(uniqueReadings)
+		clear(uniqueReadingsList)
 	}
 
 	err = srSaver.SaveInBatches()
