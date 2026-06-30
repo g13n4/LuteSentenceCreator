@@ -319,6 +319,11 @@ func (exc *Executor) processSentenceSetFile(
 	outputSentenceIdChan chan<- *string,
 	t int,
 ) error {
+	maxPerms := os.Getenv("MAXIMUM_PERMUTATION_AMOUNT")
+	if maxPerms == "" {
+		maxPerms = "10"
+	}
+
 	mhsThreadsCount := os.Getenv("MHS_THREADS")
 	if mhsThreadsCount == "" {
 		mhsThreadsCount = "1"
@@ -331,6 +336,8 @@ func (exc *Executor) processSentenceSetFile(
 		fmt.Sprintf("--output=%s", outFileName),
 		"-t",
 		mhsThreadsCount,
+		"-n",
+		maxPerms,
 		"-a",
 		"pmmcs",
 	)
