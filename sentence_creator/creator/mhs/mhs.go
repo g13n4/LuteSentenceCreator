@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/g13n4/LuteSentencePicker/sentence_creator/middleware"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/repository"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/utils"
 )
@@ -34,24 +35,20 @@ type SentenceReadingRow struct {
 }
 
 func NewExecutor(db repository.DBSaver, maxSlice ...int) *Executor {
-	var inputLines int
-	if len(maxSlice) != 0 {
-		inputLines = maxSlice[0]
-	} else {
-		inputLines = utils.GetEnvIntValue("MHS_MAX_SLICE_SIZE", 700)
-	}
+	inputLines := utils.GetEnvIntValue("MHS_MAX_SLICE_SIZE", 700)
+	maxPerms := utils.GetEnvIntValue("MAXIMUM_PERMUTATION_AMOUNT", 10)
 
 	return &Executor{
 		db:                 db,
 		maxInputLinesCount: inputLines,
 		maxEdgesCount:      inputLines * 2,
-		maxPermutations:    1,
+		maxPermutations:    maxPerms,
 		ignoreErrors:       true,
 		errorThreshold:     0.,
 	}
 }
 
-func (exc *Executor) GetSentences(ctx context.Context, outputFile *os.File, mshq QueryHelper, limit int) error {
+func (exc *Executor) GetSentences(ctx context.Context, outputFile *os.File, mshq middleware.QueryHelper, limit int) error {
 	var wg sync.WaitGroup
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -60,12 +57,12 @@ func (exc *Executor) GetSentences(ctx context.Context, outputFile *os.File, mshq
 	outputSentenceIdChan := make(chan *string)
 	processingErrors := make(chan error, 128)
 
-	rowsChan, err := exc.getIDs(ctx, mshq.CreateQuery())
+	rowsChan, err := exc.getIDs(ctx, mshq.CreateMHSQuery())
 	if err != nil {
 		return err
 	}
 
-	err = exc.processSentencesIdRows(ctx, &wg, mshq.GetPreallocSize(), rowsChan, outputSentenceIdChan, processingErrors)
+	err = exc.processSentencesIdRows(ctx, &wg, 100_000, rowsChan, outputSentenceIdChan, processingErrors)
 	if err != nil {
 		return err
 	}
@@ -319,10 +316,6 @@ func (exc *Executor) processSentenceSetFile(
 	outputSentenceIdChan chan<- *string,
 	t int,
 ) error {
-	maxPerms := os.Getenv("MAXIMUM_PERMUTATION_AMOUNT")
-	if maxPerms == "" {
-		maxPerms = "10"
-	}
 
 	mhsThreadsCount := os.Getenv("MHS_THREADS")
 	if mhsThreadsCount == "" {
@@ -337,7 +330,7 @@ func (exc *Executor) processSentenceSetFile(
 		"-t",
 		mhsThreadsCount,
 		"-n",
-		maxPerms,
+		fmt.Sprintf("%v", exc.maxPermutations),
 		"-a",
 		"pmmcs",
 	)

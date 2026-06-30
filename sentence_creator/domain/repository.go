@@ -46,3 +46,7 @@ type DBStateRepository interface {
 	SetStatus(ctx context.Context, val int) error
 	GetStatus(ctx context.Context) (int, error)
 }
+
+type ExecutorSentenceRepository interface {
+	GetSentences()
+}

@@ -1,4 +1,4 @@
-package mhs
+package middleware
 
 import (
 	"errors"
@@ -15,6 +15,8 @@ func NewQueryHelper(c ParamQueryExtractor) (*QueryHelper, error) {
 	var qh QueryHelper
 
 	qh.MaxSentencesInJoin = utils.GetEnvIntValue("MHS_MAX_SENTENCES_PER_VALUE", 30)
+
+	qh.UseMHS = c.QueryParam("mhs") == "true"
 
 	qh.JLPT = c.QueryParam("jlpt")
 	qh.Frequency = c.QueryParam("freq")
@@ -38,6 +40,8 @@ type QueryHelper struct {
 	DictionaryCategory string
 
 	MaxSentencesInJoin int
+
+	UseMHS bool
 }
 
 func (qh *QueryHelper) String() string {
@@ -148,18 +152,40 @@ func (qh *QueryHelper) IsEmpty() bool {
 	return false
 }
 
-func (qh *QueryHelper) CreateQuery() string {
-	if qh.IsKanji() {
-		return fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from kanjis k JOIN readings__mtm__kanjis rmk ON rmk.k_id = k.id INNER JOIN LATERAL (SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE rmk.r_id = smr.r_id ORDER BY smr.r_id, smr.s_id LIMIT %v ) smr ON rmk.r_id = smr.r_id WHERE %s ORDER BY smr.r_id, smr.s_id", qh.MaxSentencesInJoin, qh.getSQLCondition())
-	}
-
-	return fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from readings r JOIN dictionaries__mtm__entries dme ON r.entry = dme.entry INNER JOIN LATERAL ( SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE r.id = smr.r_id ORDER BY smr.r_id, smr.s_id LIMIT %v ) smr ON r.id = smr.r_id WHERE %s ORDER BY smr.r_id, smr.s_id", qh.MaxSentencesInJoin, qh.getSQLCondition())
+func (qh *QueryHelper) addWhereClause(sql string) string {
+	return sql + " WHERE s.isFiltered = false " + qh.getSQLCondition()
 }
 
-func (qh *QueryHelper) GetPreallocSize() int {
+func (qh *QueryHelper) addLimitClause(sql string, limit int) string {
+	if limit == 0 {
+		return sql
+	}
+	return sql + fmt.Sprintf(" LIMIT %v", limit)
+}
+
+func (qh *QueryHelper) CreateMHSQuery() string {
+	var sql string
 	if qh.IsKanji() {
-		return 3000
+		sql = fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from kanjis k JOIN readings__mtm__kanjis rmk ON rmk.k_id = k.id INNER JOIN LATERAL (SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE rmk.r_id = smr.r_id ORDER BY smr.r_id, smr.s_id LIMIT %v ) smr ON rmk.r_id = smr.r_id ORDER BY smr.r_id, smr.s_id", qh.MaxSentencesInJoin)
+	} else {
+		sql = fmt.Sprintf("SELECT DISTINCT smr.r_id, smr.s_id from readings r JOIN dictionaries__mtm__entries dme ON r.entry = dme.entry INNER JOIN LATERAL ( SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE r.id = smr.r_id ORDER BY smr.r_id, smr.s_id LIMIT %v ) smr ON r.id = smr.r_id", qh.MaxSentencesInJoin)
 	}
 
-	return 50000
+	sql = qh.addWhereClause(sql)
+
+	return sql + " ORDER BY smr.r_id, smr.s_id"
+}
+
+func (qh *QueryHelper) CreateSimpleQuery(limit int) string {
+	var sql string
+	if qh.IsKanji() {
+		sql = fmt.Sprintf("SELECT DISTINCT sentence from kanjis k JOIN readings__mtm__kanjis rmk ON rmk.k_id = k.id INNER JOIN LATERAL (SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE rmk.r_id = smr.r_id ORDER BY smr.r_id, smr.s_id LIMIT %v ) smr ON rmk.r_id = smr.r_id JOIN sentences s ON smr.s_id = s.id", qh.MaxSentencesInJoin)
+	} else {
+		sql = fmt.Sprintf("SELECT DISTINCT sentence from readings r JOIN dictionaries__mtm__entries dme ON r.entry = dme.entry INNER JOIN LATERAL ( SELECT DISTINCT smr.r_id, smr.s_id FROM sentences__mtm__readings smr WHERE r.id = smr.r_id ORDER BY smr.r_id, smr.s_id LIMIT %v ) smr ON r.id = smr.r_id JOIN sentences s ON smr.s_id = s.id", qh.MaxSentencesInJoin)
+	}
+
+	sql = qh.addWhereClause(sql)
+	sql = qh.addLimitClause(sql, limit)
+
+	return sql
 }

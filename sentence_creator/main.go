@@ -12,8 +12,10 @@ import (
 	"time"
 
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/application"
+	mhs "github.com/g13n4/LuteSentencePicker/sentence_creator/creator/mhs"
+	"github.com/g13n4/LuteSentencePicker/sentence_creator/creator/simple"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/db"
-	"github.com/g13n4/LuteSentencePicker/sentence_creator/mhs"
+	mw "github.com/g13n4/LuteSentencePicker/sentence_creator/middleware"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/state"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -39,7 +41,8 @@ func main() {
 	}
 
 	sp := db.NewStatusPool()
-	mhsRepo := mhs.NewExecutor(stateSingleton.Pool)
+	mhsExec := mhs.NewExecutor(stateSingleton.Pool)
+	simpleExec := simple.NewExecutor(stateSingleton.Pool)
 
 	var lastStepValue int64
 	for lastStepValue < 6 {
@@ -59,6 +62,7 @@ func main() {
 	e := echo.New()
 
 	e.Use(middleware.RequestLogger())
+	e.Use(mw.InjectQueryHelperMiddleware)
 
 	e.Renderer = &TemplateRenderer{
 		templates: template.Must(template.ParseGlob("src/*.html")),
@@ -69,9 +73,11 @@ func main() {
 	})
 
 	e.POST("/sentences", func(c *echo.Context) error {
-		qh, err := mhs.NewQueryHelper(c)
-		if err != nil {
-			return c.String(http.StatusBadRequest, err.Error())
+		val := c.Get(mw.ContextKey)
+
+		qh, ok := val.(*mw.QueryHelper)
+		if !ok {
+			return c.String(http.StatusBadRequest, "middleware doesn't work correctly")
 		}
 
 		timeNow := time.Now().Format("2006-01-02 15:04:05")
@@ -89,7 +95,11 @@ func main() {
 			panic("have no access to output file")
 		}
 
-		err = mhsRepo.GetSentences(context.Background(), file, *qh, 1000)
+		if qh.UseMHS {
+			err = mhsExec.GetSentences(context.Background(), file, *qh, 1000)
+		} else {
+			err = simpleExec.GetSentences(context.Background(), file, *qh, 1000)
+		}
 		if err != nil {
 			panic(err)
 		}

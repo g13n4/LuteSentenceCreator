@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/g13n4/LuteSentencePicker/sentence_creator/middleware"
 	"github.com/g13n4/LuteSentencePicker/sentence_creator/state"
 )
 
@@ -127,7 +128,8 @@ func TestSentenceIdRowsProcessing(t *testing.T) {
 	var wg sync.WaitGroup
 	stateSingleton := state.GetStateSingleton()
 
-	mhsExecutor := NewExecutor(stateSingleton.Pool, 3)
+	t.Setenv("MHS_MAX_SLICE_SIZE", "3")
+	mhsExecutor := NewExecutor(stateSingleton.Pool)
 
 	testExample := [][]int{
 		{1, 2, 5, 4},
@@ -273,12 +275,12 @@ func mhsExecutorDictionary(t *testing.T) {
 	cMock := EchoContextMock{data: map[string]string{
 		"dictionary": "501",
 	}}
-	qh, err := NewQueryHelper(&cMock)
+	qh, err := middleware.NewQueryHelper(&cMock)
 	if err != nil {
 		t.Errorf("can't create a query helper %v", err)
 	}
 
-	log.Println(qh.CreateQuery())
+	log.Println(qh.CreateMHSQuery())
 	err = mhsExecutor.GetSentences(context.Background(), file, *qh, 1000)
 	if err != nil {
 		t.Errorf("error executing mhs %v", err)
